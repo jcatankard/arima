@@ -1,8 +1,20 @@
 use super::{Model, Order};
 
-
+/// # Initiate timeseries model
+/// These methods all create new model instances
+/// 
 impl Model {
-    /// https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average#Variations_and_extensions
+    /// Create a [SARIMA](https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average#Variations_and_extensions) model.
+    /// - order: (p, d, q)
+    ///     - p: AR(p) auto regressive terms
+    ///     - d: I(d) integrated terms
+    ///     - q: MA(q) moving average terms
+    /// - seasonal_order: (P, D, Q, s)
+    ///     - P: AR(P) auto regressive terms
+    ///     - D: I(D) integrated terms
+    ///     - Q: MA(Q) moving average terms
+    ///     - s: periodicity
+    /// 
     pub fn sarima(order: (usize, usize, usize), seasonal_order: (usize, usize, usize, usize)) -> Self {
         let (p, d, q) = order;
         let order = Order {p, d, q, s: 1};
@@ -16,22 +28,33 @@ impl Model {
         Self {order, seasonal_order, y_fit: None, x_fit: None, coefs_fit: None, errors_fit: None}
     }
 
-    /// https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average
+    /// Create an [ARIMA](https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average) model
+    /// - p: AR(p) auto regressive terms
+    /// - d: I(d) integrated terms
+    /// - q: MA(q) moving average terms
+    /// 
     pub fn arima(p: usize, d: usize, q: usize) -> Self {
         Self::sarima((p, d, q), (0, 0, 0, 0))
     }
 
-    /// https://en.wikipedia.org/wiki/Autoregressive_moving-average_model
+    /// Create an [ARMA](https://en.wikipedia.org/wiki/Autoregressive_moving-average_model) model
+    /// - p: AR(p) auto regressive terms
+    /// - q: MA(q) moving average terms
+    /// 
     pub fn arma(p: usize, q: usize) -> Self {
         Self::sarima((p, 0, q), (0, 0, 0, 0))
     }
 
-    /// https://en.wikipedia.org/wiki/Autoregressive_model
+    /// Create an [Autoregressive](https://en.wikipedia.org/wiki/Autoregressive_model) model
+    /// - p: AR(p) auto regressive terms
+    /// 
     pub fn autoregressive(p: usize) -> Self {
         Self::sarima((p, 0, 0), (0, 0, 0, 0))
     }
 
-    /// https://en.wikipedia.org/wiki/Moving-average_model
+    /// Create a [Moving averages](https://en.wikipedia.org/wiki/Moving-average_model) model
+    /// - q: MA(q) moving average terms
+    /// 
     pub fn moving_average(q: usize) -> Self {
         Self::sarima((0, 0, q), (0, 0, 0, 0))
     }

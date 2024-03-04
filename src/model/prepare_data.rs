@@ -7,7 +7,7 @@ use numpy::ndarray::{Array, Array1, Array2, Axis, concatenate, s};
 
 
 impl Model {
-    pub fn prepare_for_fit(&self, y: &Array1<f64>, x: &Option<&Array2<f64>>) -> (Array1<f64>, Array2<f64>) {
+    pub(super) fn prepare_for_fit(&self, y: &Array1<f64>, x: &Option<&Array2<f64>>) -> (Array1<f64>, Array2<f64>) {
         let mut x = self.unwrap_x(&x, y.len());
         let nobs = self.find_nobs(&y, &x);
         
@@ -53,7 +53,7 @@ impl Model {
 }
 
 impl Model {
-    pub fn prepare_for_predict(&self, h: usize, x: &Option<&Array2<f64>>) -> (Array1<f64>, Array2<f64>, &Array1<f64>, Array1<f64>) {
+    pub(super) fn prepare_for_predict(&self, h: usize, x: &Option<&Array2<f64>>) -> (Array1<f64>, Array2<f64>, &Array1<f64>, Array1<f64>) {
         let (x_fit, errors_fit, coefs_fit, y_fit) = self.get_fit_refs();
         let x_future = self.prepare_x_future(h, x, &coefs_fit);
         let x = concatenate![Axis(0), x_fit.view(), x_future.view()];

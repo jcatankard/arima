@@ -1,6 +1,22 @@
-use pyo3::prelude::*;
+//! # ARIMA
+//! The purpose of this crate is to create a Rust implemenation of the following forecasters:
+//! - ARIMA
+//! - SARIMA
+//! - ARIMAX / SARIMAX
+//! - ARMA
+//! - Autoregressive
+//! - Moving average
+//! 
+//! This crate also serves as a Python extension module.
+//! 
+//! Check out [Wikipedia](https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average) for more information.
+//! 
 
+pub use model::Model;
+
+use pyo3::prelude::*;
 mod model;
+
 
 /// Formats the sum of two numbers as string.
 #[pyfunction]

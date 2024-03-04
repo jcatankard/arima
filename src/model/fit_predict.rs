@@ -2,7 +2,7 @@ use numpy::ndarray::{Array, Array1, Array2, ArrayView1, ArrayView2, s};
 use super::Model;
 
 impl Model {
-    pub fn fit_internal(&self, y: &Array1<f64>, mut x: &mut Array2<f64>) -> (Array1<f64>, Array1<f64>) {
+    pub(super) fn fit_internal(&self, y: &Array1<f64>, mut x: &mut Array2<f64>) -> (Array1<f64>, Array1<f64>) {
         let (error_start_col, seasonal_error_start_col, seasonal_error_end_col) = self.error_cols();
         let mut coefs: Array1<f64> = Array::zeros(x.shape()[1]);
         let mut errors: Array1<f64> = Array::zeros(y.len());
@@ -27,7 +27,7 @@ impl Model {
 }
 
 impl Model {
-    pub fn predict_internal(&self, h: usize, y_preds: &mut Array1<f64>, mut x: Array2<f64>, mut errors: Array1<f64>, coefs: &Array1<f64>) {
+    pub(super) fn predict_internal(&self, h: usize, y_preds: &mut Array1<f64>, mut x: Array2<f64>, mut errors: Array1<f64>, coefs: &Array1<f64>) {
         let (error_start_col, seasonal_error_start_col, seasonal_error_end_col) = self.error_cols();
         let (lag_start_col, seasonal_lag_start_col, seasonal_lag_end_col) = self.lag_cols();
 
