@@ -20,7 +20,7 @@ impl Model {
     }
     
     fn find_nobs(&self, y: &Array1<f64>, x: &Array2<f64>) -> isize {
-        let n_lost = self.nobs_lost_from_diffs_and_lags(&y);
+        let n_lost = self.nobs_lost_from_diffs_and_lags();
         let min_rows = n_lost + self.n_model_features(&x);
         if y.len() < min_rows {
             panic!("y is of length {}. It must be at least {} based on provided model parameters.", y.len(), min_rows);
@@ -28,7 +28,7 @@ impl Model {
         (y.len() - n_lost) as isize
     }
 
-    fn nobs_lost_from_diffs_and_lags(&self, y: &Array1<f64>) -> usize {
+    fn nobs_lost_from_diffs_and_lags(&self) -> usize {
         let from_lags = max(self.order.p, self.seasonal_order.p * self.seasonal_order.s);
         let from_diffs = self.order.d + self.seasonal_order.d * self.seasonal_order.s;
         from_lags + from_diffs
@@ -58,7 +58,7 @@ impl Model {
         let x_future = self.prepare_x_future(h, x, &coefs_fit);
         let x = concatenate![Axis(0), x_fit.view(), x_future.view()];
         let errors = concatenate![Axis(0), errors_fit.view(), Array::zeros(h).view()];
-        let mut y_preds = concatenate![Axis(0), y_fit.view(), Array::zeros(h).view()];
+        let y_preds = concatenate![Axis(0), y_fit.view(), Array::zeros(h).view()];
         (y_preds, x, coefs_fit, errors)
     }
 
