@@ -9,4 +9,5 @@ name = "arima"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.19.0"
+pyo3 = { version = "0.20", features = ["extension-module"] }
+numpy = "0.20"
