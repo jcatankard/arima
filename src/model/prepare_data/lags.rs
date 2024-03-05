@@ -1,11 +1,10 @@
-use super::Order;
 use numpy::ndarray::{Array1, Array2, Array, s};
 
-pub fn create_lags(y: &Array1<f64>, order: &Order) -> Array2<f64> {
-    let len = y.len() - order.p * order.s;
-    let mut y_lags: Array2<f64> = Array::zeros((len, order.p));
-    for i in 0..order.p {
-        let start = order.s * (order.p - i - 1);
+pub(super) fn create_lags(y: &Array1<f64>, p: usize, s: usize) -> Array2<f64> {
+    let len = y.len() - p * s;
+    let mut y_lags: Array2<f64> = Array::zeros((len, p));
+    for i in 0..p {
+        let start = s * (p - i - 1);
         let values = y.slice(s![start..start + len]);
         y_lags.slice_mut(s![.., i]).assign(&values);
     }
@@ -21,8 +20,7 @@ mod tests {
     #[test]
     fn test_lag_zero() {
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
-        let order = Order {p: 0, d: 1, q: 1, s: 0};
-        let y_lags = create_lags(&y, &order);
+        let y_lags = create_lags(&y, 0, 0);
         let result: Array2<f64> = Array::zeros((y.len(), 0));
         assert_eq!(result, y_lags);
     }
@@ -30,8 +28,7 @@ mod tests {
     #[test]
     fn test_lag_one() {
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
-        let order = Order {p: 1, d: 1, q: 1, s: 1};
-        let y_lags = create_lags(&y, &order);
+        let y_lags = create_lags(&y, 1, 1);
 
         let result = arr2(&[[0., 1., 2., 3., 4., 5., 6., 7., 8.]]);
         assert_eq!(result.t(), y_lags);
@@ -40,8 +37,7 @@ mod tests {
     #[test]
     fn test_lag_two() {
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
-        let order = Order {p: 2, d: 1, q: 1, s: 1};
-        let y_lags = create_lags(&y, &order);
+        let y_lags = create_lags(&y, 2, 1);
 
         let result = arr2(&[
             [1., 2., 3., 4., 5., 6., 7., 8.],
@@ -53,8 +49,7 @@ mod tests {
     #[test]
     fn test_lag_three() {
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
-        let order = Order {p: 3, d: 1, q: 1, s: 1};
-        let y_lags = create_lags(&y, &order);
+        let y_lags = create_lags(&y, 3, 1);
         let result = arr2(&[
             [2., 3., 4., 5., 6., 7., 8.],
             [1., 2., 3., 4., 5., 6., 7.],
@@ -66,8 +61,7 @@ mod tests {
     #[test]
     fn test_lag_two_seasonal_two() {
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
-        let order = Order {p: 2, d: 1, q: 1, s: 2};
-        let y_lags = create_lags(&y, &order);
+        let y_lags = create_lags(&y, 2, 2);
         let result = arr2(&[
             [2., 3., 4., 5., 6., 7.],
             [0., 1., 2., 3., 4., 5.]
@@ -80,8 +74,7 @@ mod tests {
     #[test]
     fn test_lag_three_seasonal_three() {
         let y = arr1(&[10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25., 26., 27., 28., 29.]);
-        let order = Order {p: 3, d: 1, q: 1, s: 3};
-        let y_lags = create_lags(&y, &order);
+        let y_lags = create_lags(&y, 3, 3);
         let result = arr2(&[
             [16., 17., 18., 19., 20., 21., 22., 23., 24., 25., 26.],
             [13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23.],

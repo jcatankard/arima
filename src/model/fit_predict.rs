@@ -24,11 +24,22 @@ impl Model {
         // todo! replace with lin reg solver
         Array::ones(x.shape()[1])
     }
+
+    pub(super) fn fit_error_model(&mut self, x: &Array2<f64>, errors: &Array1<f64>) {
+        if self.order.q + self.seasonal_order.q > 0 {
+            let start = x.shape()[1] + 1; // discard values at start which are set to zero
+            let e = errors.slice(s![start..]).to_owned();
+            let x_e = x.slice(s![start.., ..]).to_owned();
+            self.error_model
+                .as_mut()
+                .expect("Model should exist if there are error terms")
+                .fit(&e, &Some(&x_e));
+        }
+    }
 }
 
 impl Model {
-    pub(super) fn predict_internal(&self, h: usize, y_preds: &mut Array1<f64>, mut x: Array2<f64>, mut errors: Array1<f64>, coefs: &Array1<f64>) {
-        let (error_start_col, seasonal_error_start_col, seasonal_error_end_col) = self.error_cols();
+    pub(super) fn predict_internal(&self, h: usize, y_preds: &mut Array1<f64>, mut x: Array2<f64>, coefs: &Array1<f64>) {
         let (lag_start_col, seasonal_lag_start_col, seasonal_lag_end_col) = self.lag_cols();
 
         let start = y_preds.len() - h;
@@ -37,15 +48,13 @@ impl Model {
             self.move_up(i, &mut x, &y_preds, lag_start_col, seasonal_lag_start_col, 1);
             self.move_up(i, &mut x, &y_preds, seasonal_lag_start_col, seasonal_lag_end_col, self.seasonal_order.s);
 
-            let y_i = x.slice(s![i, ..]).dot(coefs);
-
-            self.move_up(i, &mut x, &errors, error_start_col, seasonal_error_start_col, 1);
-            self.move_up(i, &mut x, &errors, seasonal_error_start_col, seasonal_error_end_col, self.seasonal_order.s);
-
             y_preds[i] = x.slice(s![i, ..]).dot(coefs);
-            errors[i] = y_i - y_preds[i];
         }
         y_preds.slice_collapse(s![-(h as isize)..]);
+    }
+
+    pub(super) fn predict_future_errors(&self, h: usize, x: &Option<&Array2<f64>>) -> Array1<f64> {
+        if let Some(m) = self.error_model.as_ref() {m.predict(h, &x)} else {Array::zeros(h)}
     }
 }
 

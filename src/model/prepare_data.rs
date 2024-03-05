@@ -12,9 +12,11 @@ impl Model {
         let nobs = self.find_nobs(&y, &x);
         
         let mut y = self.prepare_y(&y);
-        let y_lags = lags::create_lags(&y, &self.order);
-        let y_lags_seasonal = lags::create_lags(&y, &self.seasonal_order);
-        x = self.prepare_x(x, y_lags, y_lags_seasonal, nobs);
+        let errors: Array2<f64> = Array::zeros((nobs as usize, self.order.q));
+        let errors_seasonal: Array2<f64> = Array::zeros((nobs as usize, self.seasonal_order.q));
+        let y_lags = lags::create_lags(&y, self.order.p, self.order.s);
+        let y_lags_seasonal = lags::create_lags(&y, self.seasonal_order.p, self.seasonal_order.s);
+        x = self.prepare_x(x, errors, errors_seasonal, y_lags, y_lags_seasonal, nobs);
         y.slice_collapse(s![-nobs..]);
         (y, x)
     }
@@ -53,13 +55,17 @@ impl Model {
 }
 
 impl Model {
-    pub(super) fn prepare_for_predict(&self, h: usize, x: &Option<&Array2<f64>>) -> (Array1<f64>, Array2<f64>, &Array1<f64>, Array1<f64>) {
+    pub(super) fn prepare_for_predict(&self, h: usize, x: &Option<&Array2<f64>>, future_errors: Array1<f64>) -> (Array1<f64>, Array2<f64>, &Array1<f64>) {
         let (x_fit, errors_fit, coefs_fit, y_fit) = self.get_fit_refs();
-        let x_future = self.prepare_x_future(h, x, &coefs_fit);
+
+        let errors = concatenate![Axis(0), errors_fit.view(), future_errors.view()];
+
+        let x_future = self.prepare_x_future(h, x, errors, &coefs_fit);
         let x = concatenate![Axis(0), x_fit.view(), x_future.view()];
-        let errors = concatenate![Axis(0), errors_fit.view(), Array::zeros(h).view()];
+
         let y_preds = concatenate![Axis(0), y_fit.view(), Array::zeros(h).view()];
-        (y_preds, x, coefs_fit, errors)
+
+        (y_preds, x, coefs_fit)
     }
 
     fn get_fit_refs(&self) -> (&Array2<f64>, &Array1<f64>, &Array1<f64>, &Array1<f64>) {
@@ -71,11 +77,16 @@ impl Model {
         (x_fit, errors_fit, coefs_fit, y_fit)
     }
 
-    fn prepare_x_future(&self, h: usize, x: &Option<&Array2<f64>>, coefs: &Array1<f64>) -> Array2<f64> {
+    fn prepare_x_future(&self, h: usize, x: &Option<&Array2<f64>>, all_errors: Array1<f64>, coefs: &Array1<f64>) -> Array2<f64> {
         let mut x_future = self.unwrap_x(&x, h);
+
+        let errors = lags::create_lags(&all_errors, self.order.q, self.order.s);
+        let errors_seasonal = lags::create_lags(&all_errors, self.seasonal_order.q, self.seasonal_order.s);
+
         let y_lags = Array::zeros((h, self.order.p));
         let y_lags_seasonal = Array::zeros((h, self.seasonal_order.p));
-        x_future = self.prepare_x(x_future, y_lags, y_lags_seasonal, h as isize);
+
+        x_future = self.prepare_x(x_future, errors, errors_seasonal, y_lags, y_lags_seasonal, h as isize);
         if x_future.shape()[1] != coefs.len() {
             panic!("X future must have same number of exogenous variables as used for fit");
         }
@@ -90,13 +101,21 @@ impl Model {
         x
     }
 
-    fn prepare_x(&self, x: Array2<f64>, y_lags: Array2<f64>, y_lags_seasonal: Array2<f64>, size: isize) -> Array2<f64> {
+    fn prepare_x(
+        &self,
+        x: Array2<f64>,
+        errors: Array2<f64>,
+        errors_seasonal: Array2<f64>,
+        y_lags: Array2<f64>,
+        y_lags_seasonal: Array2<f64>,
+        size: isize
+    ) -> Array2<f64> {
         let intercept: Array2<f64> = Array::ones(size as usize).insert_axis(Axis(1));
-        let errors: Array2<f64> = Array::zeros((size as usize, self.order.q + self.seasonal_order.q));
         concatenate![
             Axis(1),
             intercept.view(),
-            errors.view(),
+            errors.slice(s![-size.., ..]),
+            errors_seasonal.slice(s![-size.., ..]),
             y_lags.slice(s![-size.., ..]),
             y_lags_seasonal.slice(s![-size.., ..]),
             x.slice(s![-size.., ..])

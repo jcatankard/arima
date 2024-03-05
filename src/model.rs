@@ -1,7 +1,7 @@
 mod prepare_data;
 mod fit_predict;
 mod new;
-use numpy::ndarray::{Array1, Array2};
+use numpy::ndarray::{Array1, Array2, s};
 
 #[derive(Debug)]
 pub struct Model {
@@ -16,6 +16,7 @@ pub struct Model {
     x_fit: Option<Array2<f64>>,
     coefs_fit: Option<Array1<f64>>,
     errors_fit: Option<Array1<f64>>,
+    error_model: Option<Box<Model>>
 }
 
 /// p: AR (auto regressive) terms
@@ -38,6 +39,8 @@ impl Model {
     pub fn fit(&mut self, y: &Array1<f64>, x: &Option<&Array2<f64>>) {
         let (y, mut x) = self.prepare_for_fit(&y, &x);
         let (coefs, errors) = self.fit_internal(&y, &mut x);
+
+        self.fit_error_model(&x, &errors);
         self.y_fit = Some(y);
         self.x_fit = Some(x);
         self.coefs_fit = Some(coefs);
@@ -49,8 +52,9 @@ impl Model {
     /// 
     /// returns predictions for h horizons
     pub fn predict(&self, h: usize, x: &Option<&Array2<f64>>) -> Array1<f64> {
-        let (mut y_preds, x, coefs, errors) = self.prepare_for_predict(h, x);
-        self.predict_internal(h, &mut y_preds, x, errors, coefs);
+        let future_errors = self.predict_future_errors(h, &x);
+        let (mut y_preds, x, coefs) = self.prepare_for_predict(h, x, future_errors);
+        self.predict_internal(h, &mut y_preds, x, coefs);
         y_preds  // todo! add back differences
     }
 

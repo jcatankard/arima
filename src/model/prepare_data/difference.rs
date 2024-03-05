@@ -2,7 +2,7 @@ use super::Order;
 use numpy::ndarray::{Array1, s};
 
 
-pub fn difference(y: &Array1<f64>, order: &Order) -> Array1<f64> {
+pub(super) fn difference(y: &Array1<f64>, order: &Order) -> Array1<f64> {
     let mut y = y.to_owned();
     for _ in 0..order.d {
         y = y.slice(s![order.s..]).to_owned() - y.slice(s![..y.len() - order.s]);

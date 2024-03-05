@@ -21,11 +21,18 @@ impl Model {
 
         let (p, d, q, s) = seasonal_order;
         if s == 1 {
-            panic!("It doesn't make sense for periodicity (s) for seasonal_order to be set to 1.");
+            panic!("It doesn't make sense for periodicity (s) to be set to 1.");
         }
         let seasonal_order = Order {p, d, q, s};
 
-        Self {order, seasonal_order, y_fit: None, x_fit: None, coefs_fit: None, errors_fit: None}
+        let error_model = if order.q + seasonal_order.q == 0 {None} else {
+            let order = Order {d: 0, q: 0, ..order};
+            let seasonal_order = Order {d: 0, q: 0, ..seasonal_order};
+            let model = Self {order, seasonal_order, y_fit: None, x_fit: None, coefs_fit: None, errors_fit: None, error_model: None};
+            Some(Box::new(model))
+        };
+
+        Self {order, seasonal_order, y_fit: None, x_fit: None, coefs_fit: None, errors_fit: None, error_model}
     }
 
     /// Create an [ARIMA](https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average) model
