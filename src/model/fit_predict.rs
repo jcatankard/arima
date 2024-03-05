@@ -1,3 +1,4 @@
+mod normal_equation;
 use numpy::ndarray::{Array, Array1, Array2, ArrayView1, ArrayView2, s};
 use super::Model;
 
