@@ -12,10 +12,13 @@ impl Model {
         let nobs = self.find_nobs(&y, &x);
         
         let mut y = self.prepare_y(&y);
+
         let errors: Array2<f64> = Array::zeros((nobs as usize, self.order.q));
         let errors_seasonal: Array2<f64> = Array::zeros((nobs as usize, self.seasonal_order.q));
+        
         let y_lags = lags::create_lags(&y, self.order.p, self.order.s);
         let y_lags_seasonal = lags::create_lags(&y, self.seasonal_order.p, self.seasonal_order.s);
+        
         x = self.prepare_x(x, errors, errors_seasonal, y_lags, y_lags_seasonal, nobs);
         y.slice_collapse(s![-nobs..]);
         (y, x)
@@ -153,6 +156,20 @@ mod tests {
         let y: Array1<f64> = Array::ones(20);
         let x: Array2<f64> = Array::ones((20, 30));
         model.prepare_for_fit(&y, &Some(&x));
+    }
+
+    #[test]
+    #[should_panic(expected = "X future must have same number of exogenous variables as used for fit")]
+    fn test_x_future_wrong_cols() {
+        
+        let h = 10;
+        let x_future: Array2<f64> = Array::ones((h, 8));
+
+        let model = Model::moving_average(0);
+        let errors: Array1<f64> = Array::zeros(h);
+        let n_features = 5;
+        let coefs: Array1<f64> = Array::ones(n_features);
+        model.prepare_x_future(h, &Some(&x_future), errors, &coefs);
     }
 
     #[test]

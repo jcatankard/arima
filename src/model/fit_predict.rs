@@ -6,7 +6,7 @@ impl Model {
         let (error_start_col, seasonal_error_start_col, seasonal_error_end_col) = self.error_cols();
         let mut coefs: Array1<f64> = Array::zeros(x.shape()[1]);
         let mut errors: Array1<f64> = Array::zeros(y.len());
-        // but we need at least as many rows as columns for linear regression solver to work (assuming no regularization)
+        // we need at least as many rows as columns for linear regression solver to work (assuming no regularization)
         let start = x.shape()[1] + 1;
         for i in start..y.len() {
 
@@ -25,15 +25,12 @@ impl Model {
         Array::ones(x.shape()[1])
     }
 
-    pub(super) fn fit_error_model(&mut self, x: &Array2<f64>, errors: &Array1<f64>) {
+    pub(super) fn fit_error_model(&mut self, errors: &Array1<f64>, x: &Array2<f64>) {
         if self.order.q + self.seasonal_order.q > 0 {
-            let start = x.shape()[1] + 1; // discard values at start which are set to zero
-            let e = errors.slice(s![start..]).to_owned();
-            let x_e = x.slice(s![start.., ..]).to_owned();
             self.error_model
                 .as_mut()
                 .expect("Model should exist if there are error terms")
-                .fit(&e, &Some(&x_e));
+                .fit(&errors, &Some(&x));
         }
     }
 }

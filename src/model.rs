@@ -1,7 +1,7 @@
 mod prepare_data;
 mod fit_predict;
 mod new;
-use numpy::ndarray::{Array1, Array2, s};
+use numpy::ndarray::{Array1, Array2};
 
 #[derive(Debug)]
 pub struct Model {
@@ -10,6 +10,7 @@ pub struct Model {
     // x_fit: data used for fitting incl. exongenous variables, lags and error terms
     // coefs_fit: last coefficients from fitting
     // errors_fit: y - ŷ
+    // error_model: forecasting future errors for MA models
     order: Order,
     seasonal_order: Order,
     y_fit: Option<Array1<f64>>,
@@ -40,7 +41,7 @@ impl Model {
         let (y, mut x) = self.prepare_for_fit(&y, &x);
         let (coefs, errors) = self.fit_internal(&y, &mut x);
 
-        self.fit_error_model(&x, &errors);
+        self.fit_error_model(&errors, &x);
         self.y_fit = Some(y);
         self.x_fit = Some(x);
         self.coefs_fit = Some(coefs);
