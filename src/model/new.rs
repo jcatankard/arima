@@ -20,9 +20,7 @@ impl Model {
         let order = Order {p, d, q, s: 1};
 
         let (p, d, q, s) = seasonal_order;
-        if s == 1 {
-            panic!("It doesn't make sense for periodicity (s) to be set to 1.");
-        }
+        if s == 1 {panic!("It doesn't make sense for periodicity (s) to be set to 1.")}
         let seasonal_order = Order {p, d, q, s};
 
         let error_model = if order.q + seasonal_order.q == 0 {None} else {
