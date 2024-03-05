@@ -102,6 +102,7 @@ mod tests {
         model.move_up(3, &mut x, &errors, 0, n_error_terms, 1);
 
         let result: Array2<f64> = arr2(&[
+            // first e-1 is 0 as there is not errors[-1] value
             [0., 5., 6., 7., 0.],
             [0., 0., 5., 6., 0.],
             [0., 0., 0., 5., 0.],
