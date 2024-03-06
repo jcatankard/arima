@@ -1,7 +1,7 @@
 mod difference;
 mod lags;
 
-use super::{Model, Order};
+use super::Model;
 use std::cmp::max;
 use numpy::ndarray::{Array, Array1, Array2, Axis, concatenate, s};
 
@@ -11,7 +11,7 @@ impl Model {
         let mut x = self.unwrap_x(&x, y.len());
         let nobs = self.find_nobs(&y, &x);
         
-        let mut y = self.prepare_y(&y);
+        let mut y = self.difference_y(&y);
 
         let errors: Array2<f64> = Array::zeros((nobs as usize, self.order.q));
         let errors_seasonal: Array2<f64> = Array::zeros((nobs as usize, self.seasonal_order.q));
@@ -49,10 +49,11 @@ impl Model {
         + 1  // intercept
     }
 
-    fn prepare_y(&self, y: &Array1<f64>) -> Array1<f64> {
+    fn difference_y(&self, y: &Array1<f64>) -> Array1<f64> {
         difference::difference(
-            &difference::difference(&y, &self.order),
-            &self.seasonal_order
+            &difference::difference(&y, self.order.d, 1),
+            self.seasonal_order.d,
+            self.seasonal_order.s
         )
     }
 }
@@ -95,6 +96,16 @@ impl Model {
         }
         x_future
     }
+
+//     pub(super) fn un_difference(&self, y_preds: &mut Array1<f64>) {
+//         let mut y_last = self.y_original.to_owned().expect("Model must be fit before predict");
+//         for _ in 0..self.order.d {
+//             *y_preds = difference::un_difference(&y_preds, &y_last, self.order.s);
+//         }
+//         for _ in 0..self.seasonal_order.d {
+//             *y_preds = difference::un_difference(&y_preds, &y_last, self.seasonal_order.s);
+//         }
+//     }
 }
 
 impl Model {
