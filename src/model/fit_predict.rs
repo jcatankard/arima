@@ -1,5 +1,5 @@
 mod normal_equation;
-use numpy::ndarray::{Array, Array1, Array2, ArrayView1, ArrayView2, s};
+use numpy::ndarray::{Array, Array1, Array2, s};
 use super::Model;
 
 
@@ -82,7 +82,7 @@ impl Model {
 #[cfg(test)]
 mod tests {
     // run with "cargo test -- --show-output" to see output
-    use numpy::ndarray::{Array, Array1, Array2, arr1, arr2};
+    use numpy::ndarray::{Array, Array1, Array2, arr2};
     use super::*;
 
     #[test]
