@@ -15,19 +15,11 @@ impl Model {
             self.move_up(i, &mut x, &errors, error_start_col, seasonal_error_start_col, 1);
             self.move_up(i, &mut x, &errors, seasonal_error_start_col, seasonal_error_end_col, self.seasonal_order.s);
 
-            coefs = self.solve(y.slice(s![..i]), x.slice(s![..i, ..]));
+            coefs = normal_equation::solve(x.slice(s![..i, ..]), y.slice(s![..i]));
             let y_pred_i = x.slice(s![i, ..]).dot(&coefs);
             errors[i] = y[i] - y_pred_i;
         }
         (coefs, errors)
-    }
-
-    fn solve(&self, _y: ArrayView1<f64>, x: ArrayView2<f64>) -> Array1<f64> {
-        // let transpose = x.t();
-        // let make_square = transpose.dot(&x);
-        // let pseudo_inverse: Array2<f64> = make_square.inv().unwrap().dot(&transpose);
-        // pseudo_inverse.dot(&y)
-        Array::ones(x.shape()[1])
     }
 
     pub(super) fn fit_error_model(&mut self, errors: &Array1<f64>, x: &Array2<f64>) {
@@ -114,25 +106,5 @@ mod tests {
         ]).t().to_owned();
 
         assert_eq!(result, x);
-    }
-
-    #[test]
-    fn test_solver() {
-
-        let x: Array2<f64> = arr2(&[
-            [1., 1., 1., 1., 1., 1., 1., 1.],
-            [0., 5., 6., 7., 0., 4., 3., 2.],
-            [0., 0., 5., 6., 0., 9., 8., 7.],
-            [0., 0., 0., 5., 0., 1., 2., 3.],
-        ]).t().to_owned();
-
-        let coefs: Array1<f64> = arr1(&[-0.5, 0.5, 1.5, 2.5]);
-        let y = x.dot(&coefs);
-
-        let model = Model::autoregressive(0);
-        let sol = model.solve(y.view(), x.view());
-
-        assert_eq!(coefs, sol);
-
     }
 }
