@@ -38,10 +38,10 @@ struct Order {
 impl Model {
     /// - y: timeseries
     /// - x: exogenous variables, same length as y
-    pub fn fit(&mut self, y: &Array1<f64>, x: &Option<&Array2<f64>>) {
+    pub fn fit(&mut self, y: &Array1<f64>, x: Option<&Array2<f64>>) {
         self.y_original = Some(y.to_owned());
 
-        let (y, mut x) = self.prepare_for_fit(&y, &x);
+        let (y, mut x) = self.prepare_for_fit(&y, x);
         let (coefs, errors) = self.fit_internal(&y, &mut x);
 
         self.fit_error_model(&errors, &x);
@@ -55,8 +55,8 @@ impl Model {
     /// - x: future exongenous variables, same length as h
     /// 
     /// returns predictions for h horizons
-    pub fn predict(&self, h: usize, x: &Option<&Array2<f64>>) -> Array1<f64> {
-        let future_errors = self.predict_future_errors(h, &x);
+    pub fn predict(&self, h: usize, x: Option<&Array2<f64>>) -> Array1<f64> {
+        let future_errors = self.predict_future_errors(h, x);
         let (mut y_preds, x, coefs) = self.prepare_for_predict(h, x, future_errors);
         self.predict_internal(h, &mut y_preds, x, coefs);
         y_preds  // todo! add back differences
@@ -68,9 +68,9 @@ impl Model {
     /// - x_future: future exongenous variables, same length as h
     /// 
     /// returns predictions for h horizons
-    pub fn forecast(&mut self, y: &Array1<f64>, h: usize, x: &Option<&Array2<f64>>, x_future: &Option<&Array2<f64>>) -> Array1<f64> {
-        self.fit(&y, &x);
-        self.predict(h, &x_future)
+    pub fn forecast(&mut self, y: &Array1<f64>, h: usize, x: Option<&Array2<f64>>, x_future: Option<&Array2<f64>>) -> Array1<f64> {
+        self.fit(&y, x);
+        self.predict(h, x_future)
     }
 
     /// - y: timeseries
@@ -79,8 +79,8 @@ impl Model {
     /// - x_future: future exongenous variables, same length as h
     /// 
     /// returns predictions for h horizons
-    pub fn fit_predict(&mut self, y: &Array1<f64>, h: usize, x: &Option<&Array2<f64>>, x_future: &Option<&Array2<f64>>) -> Array1<f64> {
-        self.forecast(&y, h, &x, &x_future)
+    pub fn fit_predict(&mut self, y: &Array1<f64>, h: usize, x: Option<&Array2<f64>>, x_future: Option<&Array2<f64>>) -> Array1<f64> {
+        self.forecast(&y, h, x, x_future)
     }
 }
 

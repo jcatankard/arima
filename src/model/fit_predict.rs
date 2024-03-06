@@ -27,7 +27,7 @@ impl Model {
             self.error_model
                 .as_mut()
                 .expect("Model should exist if there are error terms")
-                .fit(&errors, &Some(&x));
+                .fit(&errors, Some(&x));
         }
     }
 }
@@ -47,8 +47,8 @@ impl Model {
         y_preds.slice_collapse(s![-(h as isize)..]);
     }
 
-    pub(super) fn predict_future_errors(&self, h: usize, x: &Option<&Array2<f64>>) -> Array1<f64> {
-        if let Some(m) = self.error_model.as_ref() {m.predict(h, &x)} else {Array::zeros(h)}
+    pub(super) fn predict_future_errors(&self, h: usize, x: Option<&Array2<f64>>) -> Array1<f64> {
+        if let Some(m) = self.error_model.as_ref() {m.predict(h, x)} else {Array::zeros(h)}
     }
 }
 

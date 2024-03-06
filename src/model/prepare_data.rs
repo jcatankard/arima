@@ -7,8 +7,8 @@ use numpy::ndarray::{Array, Array1, Array2, Axis, concatenate, s};
 
 
 impl Model {
-    pub(super) fn prepare_for_fit(&self, y: &Array1<f64>, x: &Option<&Array2<f64>>) -> (Array1<f64>, Array2<f64>) {
-        let mut x = self.unwrap_x(&x, y.len());
+    pub(super) fn prepare_for_fit(&self, y: &Array1<f64>, x: Option<&Array2<f64>>) -> (Array1<f64>, Array2<f64>) {
+        let mut x = self.unwrap_x(x, y.len());
         let nobs = self.find_nobs(&y, &x);
         
         let mut y = self.difference_y(&y);
@@ -59,7 +59,7 @@ impl Model {
 }
 
 impl Model {
-    pub(super) fn prepare_for_predict(&self, h: usize, x: &Option<&Array2<f64>>, future_errors: Array1<f64>) -> (Array1<f64>, Array2<f64>, &Array1<f64>) {
+    pub(super) fn prepare_for_predict(&self, h: usize, x: Option<&Array2<f64>>, future_errors: Array1<f64>) -> (Array1<f64>, Array2<f64>, &Array1<f64>) {
         let (x_fit, errors_fit, coefs_fit, y_fit) = self.get_fit_refs();
 
         let errors = concatenate![Axis(0), errors_fit.view(), future_errors.view()];
@@ -81,8 +81,8 @@ impl Model {
         (x_fit, errors_fit, coefs_fit, y_fit)
     }
 
-    fn prepare_x_future(&self, h: usize, x: &Option<&Array2<f64>>, all_errors: Array1<f64>, coefs: &Array1<f64>) -> Array2<f64> {
-        let mut x_future = self.unwrap_x(&x, h);
+    fn prepare_x_future(&self, h: usize, x: Option<&Array2<f64>>, all_errors: Array1<f64>, coefs: &Array1<f64>) -> Array2<f64> {
+        let mut x_future = self.unwrap_x(x, h);
 
         let errors = lags::create_lags(&all_errors, self.order.q, self.order.s);
         let errors_seasonal = lags::create_lags(&all_errors, self.seasonal_order.q, self.seasonal_order.s);
@@ -109,7 +109,7 @@ impl Model {
 }
 
 impl Model {
-    fn unwrap_x(&self, x: &Option<&Array2<f64>>, default_length: usize) -> Array2<f64> {
+    fn unwrap_x(&self, x: Option<&Array2<f64>>, default_length: usize) -> Array2<f64> {
         let x = x.unwrap_or(&Array::zeros((default_length, 0))).to_owned();
         self.check_x_size(default_length, &x);
         x
@@ -157,7 +157,7 @@ mod tests {
     fn test_y_too_small() {
         let model = Model::sarima((2, 1, 3), (1, 1, 1, 7));
         let y = arr1(&[0., 1., 2., 3.]);
-        model.prepare_for_fit(&y, &None);
+        model.prepare_for_fit(&y, None);
     }
 
     #[test]
@@ -166,7 +166,7 @@ mod tests {
         let model = Model::moving_average(0);
         let y: Array1<f64> = Array::ones(20);
         let x: Array2<f64> = Array::ones((20, 30));
-        model.prepare_for_fit(&y, &Some(&x));
+        model.prepare_for_fit(&y, Some(&x));
     }
 
     #[test]
@@ -180,7 +180,7 @@ mod tests {
         let errors: Array1<f64> = Array::zeros(h);
         let n_features = 5;
         let coefs: Array1<f64> = Array::ones(n_features);
-        model.prepare_x_future(h, &Some(&x_future), errors, &coefs);
+        model.prepare_x_future(h, Some(&x_future), errors, &coefs);
     }
 
     #[test]
@@ -189,7 +189,7 @@ mod tests {
         let model = Model::sarima((1, 1, 0), (2, 2, 0, 2));
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
         let x: Array2<f64> = arr2(&[[0., 1., 2., 3., 4.], [0., 1., 2., 3., 4.]]).t().to_owned();
-        model.prepare_for_fit(&y, &Some(&x));
+        model.prepare_for_fit(&y, Some(&x));
     }
     
     #[test]
@@ -200,7 +200,7 @@ mod tests {
         let y: Array1<f64> = Array::range(0., len as f64, 1.);
         let x: Array2<f64> = Array::zeros((len, 4));
 
-        let (_, x) = model.prepare_for_fit(&y, &Some(&x));
+        let (_, x) = model.prepare_for_fit(&y, Some(&x));
 
         // len_output should be len_input - order.d - s_order.d*s - max(order.p, s_order.p*s)
         // 29 - 1 - 7 * 0 - max(1, 7 * 2) = 13
