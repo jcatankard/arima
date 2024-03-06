@@ -13,6 +13,7 @@ pub struct Model {
     // error_model: forecasting future errors for MA models
     order: Order,
     seasonal_order: Order,
+    y_original: Option<Array1<f64>>,
     y_fit: Option<Array1<f64>>,
     x_fit: Option<Array2<f64>>,
     coefs_fit: Option<Array1<f64>>,
@@ -38,6 +39,8 @@ impl Model {
     /// - y: timeseries
     /// - x: exogenous variables, same length as y
     pub fn fit(&mut self, y: &Array1<f64>, x: &Option<&Array2<f64>>) {
+        self.y_original = Some(y.to_owned());
+
         let (y, mut x) = self.prepare_for_fit(&y, &x);
         let (coefs, errors) = self.fit_internal(&y, &mut x);
 

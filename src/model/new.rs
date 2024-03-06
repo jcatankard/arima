@@ -26,11 +26,11 @@ impl Model {
         let error_model = if order.q + seasonal_order.q == 0 {None} else {
             let order = Order {d: 0, q: 0, ..order};
             let seasonal_order = Order {d: 0, q: 0, ..seasonal_order};
-            let model = Self {order, seasonal_order, y_fit: None, x_fit: None, coefs_fit: None, errors_fit: None, error_model: None};
+            let model = Self {order, seasonal_order, y_original: None, y_fit: None, x_fit: None, coefs_fit: None, errors_fit: None, error_model: None};
             Some(Box::new(model))
         };
 
-        Self {order, seasonal_order, y_fit: None, x_fit: None, coefs_fit: None, errors_fit: None, error_model}
+        Self {order, seasonal_order, y_original: None, y_fit: None, x_fit: None, coefs_fit: None, errors_fit: None, error_model}
     }
 
     /// Create an [ARIMA](https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average) model
