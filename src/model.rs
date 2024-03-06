@@ -60,7 +60,7 @@ impl Model {
         let (mut y_preds, x, coefs) = self.prepare_for_predict(h, x, future_errors);
         self.predict_internal(h, &mut y_preds, x, coefs);
         self.un_difference(&mut y_preds);
-        y_preds  // todo! add back differences
+        y_preds
     }
 
     /// - y: timeseries
