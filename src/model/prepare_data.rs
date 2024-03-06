@@ -48,14 +48,6 @@ impl Model {
         + self.seasonal_order.p
         + 1  // intercept
     }
-
-    fn difference_y(&self, y: &Array1<f64>) -> Array1<f64> {
-        difference::difference(
-            &difference::difference(&y, self.order.d, 1),
-            self.seasonal_order.d,
-            self.seasonal_order.s
-        )
-    }
 }
 
 impl Model {
@@ -97,15 +89,18 @@ impl Model {
         x_future
     }
 
-//     pub(super) fn un_difference(&self, y_preds: &mut Array1<f64>) {
-//         let mut y_last = self.y_original.to_owned().expect("Model must be fit before predict");
-//         for _ in 0..self.order.d {
-//             *y_preds = difference::un_difference(&y_preds, &y_last, self.order.s);
-//         }
-//         for _ in 0..self.seasonal_order.d {
-//             *y_preds = difference::un_difference(&y_preds, &y_last, self.seasonal_order.s);
-//         }
-//     }
+    pub(super) fn un_difference(&self, y_preds: &mut Array1<f64>) {
+        let orders = [&self.order, &self.seasonal_order];
+        let y_original = self.y_original.to_owned().unwrap();
+        let mut degrees = self.order.d + self.seasonal_order.d;
+        for o in orders {
+            for _ in 0..o.d {
+                degrees -= 1;
+                let y_last = difference::difference(&y_original, degrees, o.s);
+                *y_preds = difference::un_difference(&y_preds, &y_last, o.s);
+            }
+        }
+    }
 }
 
 impl Model {
@@ -142,6 +137,13 @@ impl Model {
         }
     }
 
+    fn difference_y(&self, y: &Array1<f64>) -> Array1<f64> {
+        difference::difference(
+            &difference::difference(&y, self.order.d, 1),
+            self.seasonal_order.d,
+            self.seasonal_order.s
+        )
+    }
 }
 
 
@@ -226,5 +228,78 @@ mod tests {
         ]).t().to_owned();
 
         assert_eq!(x, x_result);
+    }
+
+    #[test]
+    fn test_undifference_all() {
+        let mut model = Model::sarima((0, 1, 0), (0, 0, 0, 0));
+
+        let train_len = 50;
+        let y: Array1<f64> = Array::range(0., train_len as f64, 1.);
+        model.fit(&y, None);
+
+        let h = 10;
+        let mut y_preds: Array1<f64> = Array::ones(h);
+        model.un_difference(&mut y_preds);
+
+        let result: Array1<f64> = Array::range(train_len as f64, (train_len + h) as f64, 1.);
+        assert_eq!(y_preds, result);
+    }
+
+    #[test]
+    fn test_undifference_all_two_gap() {
+        let mut model = Model::sarima((0, 1, 0), (0, 0, 0, 0));
+
+        let train_len = 50;
+        let gap = 2.;
+        let y: Array1<f64> = Array::range(0., train_len as f64, gap);
+        model.fit(&y, None);
+
+        let h = 10;
+        let mut y_preds: Array1<f64> = Array::ones(h) * gap;
+        model.un_difference(&mut y_preds);
+
+        let result: Array1<f64> = Array::range(train_len as f64, (train_len + h * (gap as usize)) as f64, gap);
+        assert_eq!(y_preds, result);
+    }
+
+    #[test]
+    fn test_undifference_all_two_degrees() {
+        let mut model = Model::sarima((0, 2, 0), (0, 0, 0, 0));
+
+        let y: Array1<f64> = arr1(&[1., 2., 4., 7., 11., 16., 22., 29., 37., 46., 56., 67., 79., 92.]);
+        model.fit(&y, None);
+
+        let h = 5;
+        let mut y_preds: Array1<f64> = Array::ones(h);
+        model.un_difference(&mut y_preds);
+
+        let result: Array1<f64> = arr1(&[106., 121., 137., 154., 172.]);
+        assert_eq!(y_preds, result);
+    }
+
+    #[test]
+    fn test_undifference_all_two_degrees_seasonal() {
+        let mut model = Model::sarima((0, 2, 0), (0, 1, 0, 3));
+
+        let y1: Array1<f64> = arr1(&[1., 2., 4., 7., 11., 16., 22., 29., 37., 46., 56., 67., 79., 92., 106., 121., 137., 154., 172.]);
+        let y2: Array1<f64> = arr1(&[0., 0., 0., 1., 1., 1., 2., 2., 2., 3., 3., 3., 4., 4., 4., 5., 5., 5., 6.]);
+        let y = y1 + y2;
+
+        let cutoff = 14;
+        let y_train = y.slice(s![..cutoff]).to_owned();
+        println!("Y TRAIN: {:?}", y_train);
+
+        let y_future = y.slice(s![cutoff..]).to_owned();
+        println!("Y FUTURE: {:?}", y_future);
+
+        model.fit(&y_train, None);
+
+        let mut y_preds = model.difference_y(&y).slice(s![cutoff..]).to_owned();
+        println!("Y PREDS BEFORE: {:?}", y_preds);
+        model.un_difference(&mut y_preds);
+        println!("Y PREDS AFTER: {:?}", y_preds);
+
+        assert_eq!(y_preds, y_future);
     }
 }

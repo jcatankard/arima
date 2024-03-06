@@ -1,4 +1,4 @@
-use numpy::ndarray::{Array1, s};
+use numpy::ndarray::{Array1, Axis, s, concatenate};
 
 /// d: degree of differences
 /// s: periodicity
@@ -15,22 +15,22 @@ pub(super) fn difference(y: &Array1<f64>, d: usize, s: usize) -> Array1<f64> {
 /// y_last: y_fit at level d
 /// s: periodicity
 pub(super) fn un_difference(y_differenced: &Array1<f64>, y_last: &Array1<f64>, s: usize) -> Array1<f64> {
-
-    let mut y_new = y_differenced.to_owned();
-    for i in 0..s {
-        y_new[i] += y_last[y_last.len() - 1 * s + i];
+    let y_last_len = y_last.len();
+    if s <= y_last_len {
+        let mut y_temp = concatenate![Axis(0), y_last.view(), y_differenced.view()];
+        for i in y_last_len..y_temp.len() {
+            y_temp[i] = y_temp[i - s];
+        }
+        return y_temp.slice(s![y_last_len..]).to_owned();
     }
-    
-    for i in s..y_new.len() {
-        y_new[i] += y_new[i - s];
-    }
-    y_new
+    y_differenced.to_owned()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use numpy::ndarray::{arr1, s};
+    use crate::model::Model;
+    use numpy::ndarray::{Array, arr1, s};
     // run with "cargo test -- --show-output" to see output
 
     #[test]
@@ -82,21 +82,39 @@ mod tests {
     }
 
     #[test]
-    fn test_undifference() {
-        let y: Array1<f64> = arr1(&[1., 2., 4., 7., 11., 16., 22., 29., 37., 46., 56., 67., 79., 92.]);
-        let s = 1;
-        let y_diff = difference(&y, 1, s);
-        let y_undiff = un_difference(&y_diff, &y.slice(s![..s]).to_owned(), s);
-        assert_eq!(y.slice(s![s..]), y_undiff);
+    fn test_undifference_one_degrees() {
+        let mut model = Model::sarima((0, 1, 0), (0, 0, 0, 0));
+
+        let y: Array1<f64> = Array::range(0., 25., 1.);
+
+        let cutoff = 14;
+        let y_train = y.slice(s![..cutoff]).to_owned();
+        model.fit(&y_train, None);
+
+        let y_future = y.slice(s![cutoff..]).to_owned();
+
+        let mut y_preds = model.difference_y(&y).slice(s![cutoff..]).to_owned();
+        model.un_difference(&mut y_preds);
+        
+        assert_eq!(y_future, y_preds);
     }
 
     
     #[test]
-    fn test_undifference_seasonal() {
-        let y: Array1<f64> = arr1(&[1., 2., 4., 7., 11., 16., 22., 29., 37., 46., 56., 67., 79., 92.]);
-        let s = 3;
-        let y_diff = difference(&y, 1, s);
-        let y_undiff = un_difference(&y_diff, &y.slice(s![..s]).to_owned(), s);
-        assert_eq!(y.slice(s![s..]), y_undiff);
+    fn test_undifference_two_degrees() {
+        let mut model = Model::sarima((0, 2, 0), (0, 0, 0, 0));
+
+        let y: Array1<f64> = arr1(&[1., 2., 4., 7., 11., 16., 22., 29., 37., 46., 56., 67., 79., 92., 106., 121., 137., 154., 172.]);
+
+        let cutoff = 14;
+        let y_train = y.slice(s![..cutoff]).to_owned();
+        model.fit(&y_train, None);
+
+        let y_future = y.slice(s![cutoff..]).to_owned();
+
+        let mut y_preds = model.difference_y(&y).slice(s![cutoff..]).to_owned();
+        model.un_difference(&mut y_preds);
+        
+        assert_eq!(y_future, y_preds);
     }
 }
