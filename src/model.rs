@@ -2,8 +2,11 @@ mod prepare_data;
 mod fit_predict;
 mod new;
 use numpy::ndarray::{Array1, Array2};
+use pyo3::{pyclass, pymethods};
 
+// https://github.com/PyO3/pyo3/blob/main/guide/pyclass_parameters.md
 #[derive(Debug)]
+#[pyclass(name = "Model", module = "arima")]
 pub struct Model {
     // order: (AR(p), I(d), MA(q), 1)
     // seasonal_order: (AR(p), I(d), MA(q), s)
@@ -35,6 +38,7 @@ struct Order {
 
 /// # Train and forecast
 /// 
+// #[pymethods]
 impl Model {
     /// - y: timeseries
     /// - x: exogenous variables, same length as y
@@ -82,6 +86,70 @@ impl Model {
     /// returns predictions for h horizons
     pub fn fit_predict(&mut self, y: &Array1<f64>, h: usize, x: Option<&Array2<f64>>, x_future: Option<&Array2<f64>>) -> Array1<f64> {
         self.forecast(&y, h, x, x_future)
+    }
+
+    /// Create a [SARIMA](https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average#Variations_and_extensions) model.
+    /// - order: (p, d, q)
+    ///     - p: AR(p) auto regressive terms
+    ///     - d: I(d) integrated terms
+    ///     - q: MA(q) moving average terms
+    /// - seasonal_order: (P, D, Q, s)
+    ///     - P: AR(P) auto regressive terms
+    ///     - D: I(D) integrated terms
+    ///     - Q: MA(Q) moving average terms
+    ///     - s: periodicity
+    /// 
+
+    // #[new]
+    pub fn sarima(order: (usize, usize, usize), seasonal_order: (usize, usize, usize, usize)) -> Self {
+        let (p, d, q) = order;
+        let order = Order {p, d, q, s: 1};
+
+        let (p, d, q, s) = seasonal_order;
+        if s == 1 {panic!("It doesn't make sense for periodicity (s) to be set to 1.")}
+        let seasonal_order = Order {p, d, q, s};
+
+        let error_model = if order.q + seasonal_order.q == 0 {None} else {
+            let order = Order {d: 0, q: 0, ..order};
+            let seasonal_order = Order {d: 0, q: 0, ..seasonal_order};
+            let model = Self {order, seasonal_order, y_original: None, y_fit: None, x_fit: None, coefs_fit: None, errors_fit: None, error_model: None};
+            Some(Box::new(model))
+        };
+
+        Self {order, seasonal_order, y_original: None, y_fit: None, x_fit: None, coefs_fit: None, errors_fit: None, error_model}
+    }
+
+    /// Create an [ARIMA](https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average) model
+    /// - p: AR(p) auto regressive terms
+    /// - d: I(d) integrated terms
+    /// - q: MA(q) moving average terms
+    /// 
+
+    pub fn arima(p: usize, d: usize, q: usize) -> Self {
+        Self::sarima((p, d, q), (0, 0, 0, 0))
+    }
+
+    /// Create an [ARMA](https://en.wikipedia.org/wiki/Autoregressive_moving-average_model) model
+    /// - p: AR(p) auto regressive terms
+    /// - q: MA(q) moving average terms
+    ///
+
+    pub fn arma(p: usize, q: usize) -> Self {
+        Self::sarima((p, 0, q), (0, 0, 0, 0))
+    }
+
+    /// Create an [Autoregressive](https://en.wikipedia.org/wiki/Autoregressive_model) model
+    /// - p: AR(p) auto regressive terms
+
+    pub fn autoregressive(p: usize) -> Self {
+        Self::sarima((p, 0, 0), (0, 0, 0, 0))
+    }
+
+    /// Create a [Moving averages](https://en.wikipedia.org/wiki/Moving-average_model) model
+    /// - q: MA(q) moving average terms
+
+    pub fn moving_average(q: usize) -> Self {
+        Self::sarima((0, 0, q), (0, 0, 0, 0))
     }
 }
 
@@ -175,5 +243,46 @@ mod tests {
         let y_preds = model.predict(20, Some(&x_test)).mapv(|x| (100. * x).round() / 100.);
         y_test = y_test.mapv(|x| (100. * x).round() / 100.);
         assert_eq!(y_test, y_preds);
+    }
+
+    #[test]
+    #[should_panic(expected = "to be set to 1")]
+    fn new_seasonal_s_equal_one() {
+        let _model = Model::sarima((1, 2, 3), (4, 5, 6, 1)); 
+    }
+
+    #[test]
+    fn new_sarima() {
+        let model = Model::sarima((1, 2, 3), (4, 5, 6, 7));
+        assert_eq!(model.order, Order {p: 1, d: 2, q: 3, s: 1});
+        assert_eq!(model.seasonal_order, Order {p: 4, d: 5, q: 6, s: 7});
+    }
+
+    #[test]
+    fn new_arima() {
+        let model = Model::arima(1, 2, 3);
+        assert_eq!(model.order, Order {p: 1, d: 2, q: 3, s: 1});
+        assert_eq!(model.seasonal_order, Order {p: 0, d: 0, q: 0, s: 0});
+    }
+
+    #[test]
+    fn new_arma() {
+        let model = Model::arma(1, 3);
+        assert_eq!(model.order, Order {p: 1, d: 0, q: 3, s: 1});
+        assert_eq!(model.seasonal_order, Order {p: 0, d: 0, q: 0, s: 0});
+    }
+
+    #[test]
+    fn new_ar() {
+        let model = Model::autoregressive(1);
+        assert_eq!(model.order, Order {p: 1, d: 0, q: 0, s: 1});
+        assert_eq!(model.seasonal_order, Order {p: 0, d: 0, q: 0, s: 0});
+    }
+
+    #[test]
+    fn new_ma() {
+        let model = Model::moving_average(3);
+        assert_eq!(model.order, Order {p: 0, d: 0, q: 3, s: 1});
+        assert_eq!(model.seasonal_order, Order {p: 0, d: 0, q: 0, s: 0});
     }
 }
