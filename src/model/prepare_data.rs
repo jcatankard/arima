@@ -125,7 +125,17 @@ impl Model {
 
     fn check_x_size(&self, size: usize, x: &Array2<f64>) {
         if x.shape()[0] != size {
-            panic!("x is length: {}. It must be length: {}.", x.len(), size);
+            panic!("x is length: {}. It must be length: {}.", x.shape()[0], size);
+        }
+        match self.x_fit.as_ref() {
+            None => (),
+            Some(x_fit) => {
+                let not_exog = self.order.p + self.seasonal_order.p + self.order.q + self.seasonal_order.q + 1;
+                let n_exog = x_fit.shape()[1] - not_exog;
+                if x.shape()[1] != n_exog {
+                    panic!("x has {} columns. It must should have {}.", x.shape()[1], n_exog);
+                }
+            }
         }
     }
 }
