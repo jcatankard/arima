@@ -1,10 +1,9 @@
 mod prepare_data;
 mod fit_predict;
-mod new;
 use numpy::ndarray::{Array1, Array2};
-use pyo3::{pyclass, pymethods};
+use pyo3::pyclass;
 
-// https://github.com/PyO3/pyo3/blob/main/guide/pyclass_parameters.md
+
 #[derive(Debug)]
 #[pyclass(name = "Model", module = "arima")]
 pub struct Model {
@@ -38,7 +37,6 @@ struct Order {
 
 /// # Train and forecast
 /// 
-// #[pymethods]
 impl Model {
     /// - y: timeseries
     /// - x: exogenous variables, same length as y
@@ -99,8 +97,6 @@ impl Model {
     ///     - Q: MA(Q) moving average terms
     ///     - s: periodicity
     /// 
-
-    // #[new]
     pub fn sarima(order: (usize, usize, usize), seasonal_order: (usize, usize, usize, usize)) -> Self {
         let (p, d, q) = order;
         let order = Order {p, d, q, s: 1};
