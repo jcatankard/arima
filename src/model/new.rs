@@ -72,41 +72,41 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "to be set to 1")]
-    fn test_seasonal_s_equal_one() {
+    fn new_seasonal_s_equal_one() {
         let _model = Model::sarima((1, 2, 3), (4, 5, 6, 1)); 
     }
 
 
     #[test]
-    fn test_sarima_new() {
+    fn new_sarima() {
         let model = Model::sarima((1, 2, 3), (4, 5, 6, 7));
         assert_eq!(model.order, Order {p: 1, d: 2, q: 3, s: 1});
         assert_eq!(model.seasonal_order, Order {p: 4, d: 5, q: 6, s: 7});
     }
 
     #[test]
-    fn test_arima_new() {
+    fn new_arima() {
         let model = Model::arima(1, 2, 3);
         assert_eq!(model.order, Order {p: 1, d: 2, q: 3, s: 1});
         assert_eq!(model.seasonal_order, Order {p: 0, d: 0, q: 0, s: 0});
     }
 
     #[test]
-    fn test_arma_new() {
+    fn new_arma() {
         let model = Model::arma(1, 3);
         assert_eq!(model.order, Order {p: 1, d: 0, q: 3, s: 1});
         assert_eq!(model.seasonal_order, Order {p: 0, d: 0, q: 0, s: 0});
     }
 
     #[test]
-    fn test_ar_new() {
+    fn new_ar() {
         let model = Model::autoregressive(1);
         assert_eq!(model.order, Order {p: 1, d: 0, q: 0, s: 1});
         assert_eq!(model.seasonal_order, Order {p: 0, d: 0, q: 0, s: 0});
     }
 
     #[test]
-    fn test_ma_new() {
+    fn new_ma() {
         let model = Model::moving_average(3);
         assert_eq!(model.order, Order {p: 0, d: 0, q: 3, s: 1});
         assert_eq!(model.seasonal_order, Order {p: 0, d: 0, q: 0, s: 0});

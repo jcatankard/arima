@@ -89,11 +89,91 @@ impl Model {
 #[cfg(test)]
 mod tests {
     // run with "cargo test -- --show-output" to see output
-    // use super::*;
+    use numpy::ndarray::{Array, Array1, arr1, s};
+    use super::*;
 
     #[test]
-    fn test_something() {
-        assert!(true)
+    fn model_autoregressive() {
+
+        let (cons, lag1, lag2) = (100., 0.5, -0.25);
+
+        let mut y: Array1<f64> = Array::zeros(200) + cons;
+        y[0] = 150.;
+        y[1] = 50.;
+
+        for i in 2..y.len() {
+            y[i] += y[i - 1] * lag1 + y[i - 2] * lag2;
+        }
+
+        let y_train = y.slice(s![..180]).to_owned();
+        let mut y_test = y.slice(s![180..]).to_owned();
+       
+        let mut model = Model::autoregressive(2);
+        model.fit(&y_train, None);
+
+        let coefs = model.coefs_fit.as_ref().unwrap().mapv(|x| (100. * x).round() / 100.);
+
+        assert_eq!(arr1(&[cons, lag1, lag2]), coefs);
+
+        let y_preds = model.predict(20, None).mapv(|x| (100. * x).round() / 100.);
+        y_test = y_test.mapv(|x| (100. * x).round() / 100.);
+        assert_eq!(y_test, y_preds);
     }
 
+    #[test]
+    fn model_seasonal_ar() {
+
+        let (cons, lag1, lag2, lag_s, s) = (60., 0.45, -0.35, 0.25, 7);
+
+        let mut y: Array1<f64> = Array::zeros(100) + cons;
+
+        for i in s..y.len() {
+            y[i] += y[i - 1] * lag1 + y[i - 2] * lag2 + y[i - s] * lag_s;
+        }
+
+        let y_train = y.slice(s![..80]).to_owned();
+        let mut y_test = y.slice(s![80..]).to_owned();
+       
+        let mut model = Model::sarima((2, 0, 0), (1, 0, 0, s));
+        model.fit(&y_train, None);
+
+        let coefs = model.coefs_fit.as_ref().unwrap().mapv(|x| (100. * x).round() / 100.);
+
+        assert_eq!(arr1(&[cons, lag1, lag2, lag_s]), coefs);
+
+        let y_preds = model.predict(20, None).mapv(|x| (100. * x).round() / 100.);
+        y_test = y_test.mapv(|x| (100. * x).round() / 100.);
+        assert_eq!(y_test, y_preds);
+    }
+
+    #[test]
+    fn model_exog() {
+        let n_rows = 100;
+
+        let mut x: Array2<f64> = Array::zeros((n_rows, 4));
+        x.slice_mut(s![.., 0]).assign(&Array::linspace(-100., -20., n_rows));
+        x.slice_mut(s![.., 1]).assign(&Array::logspace(3., 1., 2., n_rows));
+        x.slice_mut(s![.., 2]).assign(&Array::logspace(2., -1., 2., n_rows));
+        x.slice_mut(s![.., 3]).assign(&Array::geomspace(100., 200., n_rows).unwrap());
+
+        let x_coefs = arr1(&[10.4, 20.6, -10.8, 1.2]);
+        let y = x.dot(&x_coefs);
+
+        let y_train = y.slice(s![..80]).to_owned();
+        let mut y_test = y.slice(s![80..]).to_owned();
+       
+        let x_train = x.slice(s![..80, ..]).to_owned();
+        let x_test = x.slice(s![80.., ..]).to_owned();
+       
+        let mut model = Model::moving_average(0);
+        model.fit(&y_train, Some(&x_train));
+
+        let coefs = model.coefs_fit.as_ref().unwrap().mapv(|x| (100. * x).round() / 100.);
+
+        assert_eq!(x_coefs, coefs.slice(s![1..]));
+
+        let y_preds = model.predict(20, Some(&x_test)).mapv(|x| (100. * x).round() / 100.);
+        y_test = y_test.mapv(|x| (100. * x).round() / 100.);
+        assert_eq!(y_test, y_preds);
+    }
 }

@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "It must be at least")]
-    fn test_y_too_small() {
+    fn prepare_data_y_too_small() {
         let model = Model::sarima((2, 1, 3), (1, 1, 1, 7));
         let y = arr1(&[0., 1., 2., 3.]);
         model.prepare_for_fit(&y, None);
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "It must be at least")]
-    fn test_y_too_small_for_x_cols() {
+    fn prepare_data_y_too_small_for_x_cols() {
         let model = Model::moving_average(0);
         let y: Array1<f64> = Array::ones(20);
         let x: Array2<f64> = Array::ones((20, 30));
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "X future must have same number of exogenous variables as used for fit")]
-    fn test_x_future_wrong_cols() {
+    fn prepare_data_x_future_wrong_cols() {
         
         let h = 10;
         let x_future: Array2<f64> = Array::ones((h, 8));
@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "must be length")]
-    fn test_y_len_not_equal_x_len() {
+    fn prepare_data_y_len_not_equal_x_len() {
         let model = Model::sarima((1, 1, 0), (2, 2, 0, 2));
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
         let x: Array2<f64> = arr2(&[[0., 1., 2., 3., 4.], [0., 1., 2., 3., 4.]]).t().to_owned();
@@ -189,7 +189,7 @@ mod tests {
     }
     
     #[test]
-    fn test_prepare_for_fit() {
+    fn prepare_data_prepare_for_fit() {
         let model = Model::sarima((1, 1, 3), (2, 0, 2, 7));
 
         let len = 28;

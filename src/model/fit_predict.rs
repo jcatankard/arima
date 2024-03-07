@@ -86,7 +86,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_move_up() {
+    fn fit_predict_move_up() {
         let len = 5;
         let errors: Array1<f64> = Array::range(5., 5. + len as f64, 1.);
         let n_error_terms = 3;

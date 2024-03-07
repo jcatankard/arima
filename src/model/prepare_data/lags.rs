@@ -18,7 +18,7 @@ mod tests {
     use numpy::ndarray::{arr1, arr2};
 
     #[test]
-    fn test_lag_zero() {
+    fn lags_zero() {
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
         let y_lags = create_lags(&y, 0, 0);
         let result: Array2<f64> = Array::zeros((y.len(), 0));
@@ -26,7 +26,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lag_one() {
+    fn lags_one() {
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
         let y_lags = create_lags(&y, 1, 1);
 
@@ -35,7 +35,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lag_two() {
+    fn lags_two() {
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
         let y_lags = create_lags(&y, 2, 1);
 
@@ -47,7 +47,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lag_three() {
+    fn lags_three() {
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
         let y_lags = create_lags(&y, 3, 1);
         let result = arr2(&[
@@ -59,7 +59,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lag_two_seasonal_two() {
+    fn lags_two_seasonal_two() {
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
         let y_lags = create_lags(&y, 2, 2);
         let result = arr2(&[
@@ -72,7 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lag_three_seasonal_three() {
+    fn lags_three_seasonal_three() {
         let y = arr1(&[10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25., 26., 27., 28., 29.]);
         let y_lags = create_lags(&y, 3, 3);
         let result = arr2(&[

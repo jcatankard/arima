@@ -59,41 +59,41 @@ mod tests {
     // run with "cargo test -- --show-output" to see output
 
     #[test]
-    fn test_difference_zero() {
+    fn difference_difference_zero() {
         let y: Array1<f64> = arr1(&[1., 2., 3., 4., 5.]);
         assert_eq!(difference(&y, 0, 0), y)
     }
 
     #[test]
-    fn test_difference_one() {
+    fn difference_difference_one() {
         let y: Array1<f64> = arr1(&[1., 2., 3., 4., 5.]);
         let result: Array1<f64> = arr1(&[1., 1., 1., 1.]);
         assert_eq!(difference(&y, 1, 1), result)
     }
 
     #[test]
-    fn test_difference_two() {
+    fn difference_difference_two() {
         let y: Array1<f64> = arr1(&[1., 2., 4., 7., 11., 16., 22.]);
         let result: Array1<f64> = arr1(&[1., 1., 1., 1., 1.]);
         assert_eq!(difference(&y, 2, 1), result)
     }
 
     #[test]
-    fn test_difference_three() {
+    fn difference_difference_three() {
         let y: Array1<f64> = arr1(&[1., 2., 4., 8., 15., 26., 42.]);
         let result: Array1<f64> = arr1(&[1., 1., 1., 1.]);
         assert_eq!(difference(&y, 3, 1), result)
     }
 
     #[test]
-    fn test_difference_seasonal_three() {
+    fn difference_difference_seasonal_three() {
         let y: Array1<f64> = arr1(&[1., 1., 1., 2., 2., 2., 3., 3., 3., 4., 4., 4.]);
         let result: Array1<f64> = arr1(&[1., 1., 1., 1., 1., 1., 1., 1., 1.]);
         assert_eq!(difference(&y, 1, 3), result)
     }
 
     #[test]
-    fn test_difference_one_seasonal_three() {
+    fn difference_difference_one_seasonal_three() {
         let y1: Array1<f64> = arr1(&[1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
         let y2: Array1<f64> = arr1(&[1., 1., 1., 2., 2., 2., 3., 3., 3., 4., 4., 4.]);
         let y = y1 + y2;
@@ -107,7 +107,7 @@ mod tests {
     }
 
     #[test]
-    fn test_undifference_one_degree() {
+    fn difference_undifference_one_degree() {
 
         let (d, s_d, s) = (1, 0, 0);
 
@@ -115,7 +115,7 @@ mod tests {
 
         let cutoff = 14;
         let from_end = (y.len() - cutoff) as isize;
-        
+
         let y_train = y.slice(s![..cutoff]).to_owned();
         let y_future = y.slice(s![cutoff..]).to_owned();
 
@@ -127,7 +127,7 @@ mod tests {
     }
     
     #[test]
-    fn test_undifference_two_degrees() {
+    fn difference_undifference_two_degrees() {
         let (d, s_d, s) = (2, 0, 0);
 
         let y: Array1<f64> = arr1(&[1., 2., 4., 7., 11., 16., 22., 29., 37., 46., 56., 67., 79., 92., 106., 121., 137., 154., 172.]);
@@ -146,7 +146,7 @@ mod tests {
     }
 
     #[test]
-    fn test_undifference_two_one_degrees() {
+    fn difference_undifference_two_one_degrees() {
 
         let (d, s_d, s) = (2, 1, 2);
 

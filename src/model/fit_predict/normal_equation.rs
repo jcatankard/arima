@@ -20,7 +20,7 @@ mod tests {
     use numpy::ndarray::{arr1, arr2, Array2};
 
     #[test]
-    fn test_solve() {
+    fn normal_equation_solve() {
         let x: Array2<f64> = arr2(&[
             [1., 2., 3., 4.],
             [1., 7., 6., 7.],
