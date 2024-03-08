@@ -1,5 +1,5 @@
 // extern crate intel_mkl_src;
-use numpy::ndarray::{Array1, ArrayView2, ArrayView1};
+use numpy::ndarray::{Array, Array1, ArrayView2, ArrayView1};
 use ndarray_linalg::solve::Inverse;
 
 
@@ -7,7 +7,17 @@ use ndarray_linalg::solve::Inverse;
 pub(super) fn solve(x: ArrayView2<f64>, y: ArrayView1<f64>) -> Array1<f64> {
     let transpose = x.t();
     let square = transpose.dot(&x);
-    let square_inverse = square.inv().expect("Square matrix should invert");
+    
+    let square_inverse = match square.inv() {
+        Ok(x) => x,
+        Err(_) => {
+            let mut penalty = Array::eye(square.shape()[0]);
+            penalty *= 0.1;
+            penalty[[0, 0]] = 0.;  // intercept
+            (square + penalty).inv().expect("Should invert.")
+        }
+    };
+
     let pseudo_inverse = square_inverse.dot(&transpose);
     pseudo_inverse.dot(&y)
 }
