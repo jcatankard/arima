@@ -56,7 +56,7 @@ impl Model {
     fn move_up(&self, index: usize, x: &mut Array2<f64>, values: &Array1<f64>, start_col: usize, end_col: usize, s: usize) {
         let s = s as isize;
         for (q, col) in (start_col..end_col).enumerate() {
-            let loc = (index as isize) - (q as isize) * s - 1;
+            let loc = (index as isize) - (q as isize + 1) * s;
             if loc >= 0 {
                 x[[index, col]] = values[loc as usize];
             }
@@ -92,7 +92,7 @@ mod tests {
         let n_error_terms = 3;
         let mut x: Array2<f64> = Array::zeros((len, n_error_terms));
 
-        let model = Model::moving_average(2);
+        let model = Model::moving_average(n_error_terms);
         model.move_up(0, &mut x, &errors, 0, n_error_terms, 1);
         model.move_up(1, &mut x, &errors, 0, n_error_terms, 1);
         model.move_up(2, &mut x, &errors, 0, n_error_terms, 1);
@@ -104,6 +104,40 @@ mod tests {
             [0., 0., 5., 6., 0.],
             [0., 0., 0., 5., 0.],
         ]).t().to_owned();
+
+        assert_eq!(result, x);
+    }
+
+    #[test]
+    fn fit_predict_move_up_seasonal() {
+        let len = 15;
+        let errors: Array1<f64> = Array::range(5., 5. + len as f64, 1.);
+        let n_error_terms = 3;
+        let mut x: Array2<f64> = Array::zeros((len, n_error_terms));
+
+        let model = Model::sarima((0, 0, 1), (0, 0, 2, 7));
+        for i in 0..15 {
+            model.move_up(i, &mut x, &errors, 0, 1, 1);
+            model.move_up(i, &mut x, &errors, 1, 3, 7);
+        }
+
+        let result: Array2<f64> = arr2(&[
+            [0.0, 0.0, 0.0],
+            [5.0, 0.0, 0.0],
+            [6.0, 0.0, 0.0],
+            [7.0, 0.0, 0.0],
+            [8.0, 0.0, 0.0],
+            [9.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [11.0, 5.0, 0.0],
+            [12.0, 6.0, 0.0],
+            [13.0, 7.0, 0.0],
+            [14.0, 8.0, 0.0],
+            [15.0, 9.0, 0.0],
+            [16.0, 10.0, 0.0],
+            [17.0, 11.0, 0.0],
+            [18.0, 12.0, 5.0]
+        ]);
 
         assert_eq!(result, x);
     }
