@@ -81,6 +81,11 @@ impl Model {
     fn py_moving_average(_cls: &PyType, q: usize) -> PyResult<Self> {
         Ok(Self::moving_average(q))
     }
+
+//     #[getter]
+//     fn coefs<'py>(&self, py: Python<'py>) -> PyResult<&'py PyArray1<f64>> {
+//         Ok(self.coefs_fit.to_owned().unwrap().into_pyarray(py))
+//     }
 }
 
 
