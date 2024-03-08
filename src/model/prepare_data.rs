@@ -125,18 +125,23 @@ impl Model {
 
     fn check_x_size(&self, size: usize, x: &Array2<f64>) {
         if x.shape()[0] != size {
-            panic!("x is length: {}. It must be length: {}.", x.shape()[0], size);
+            panic!("x is length: {}. It should be length: {}.", x.shape()[0], size);
         }
-        match self.x_fit.as_ref() {
-            None => (),
-            Some(x_fit) => {
-                let not_exog = self.order.p + self.seasonal_order.p + self.order.q + self.seasonal_order.q + 1;
-                let n_exog = x_fit.shape()[1] - not_exog;
-                if x.shape()[1] != n_exog {
-                    panic!("x has {} columns. It must should have {}.", x.shape()[1], n_exog);
-                }
+
+        if let Some(x_fit) = &self.x_fit {
+            if x.shape()[1] != self.n_exog(&x_fit) {
+                panic!("x has {} columns. It should have {}.", x.shape()[1], self.n_exog(&x_fit));
             }
         }
+
+    }
+
+    pub(crate) fn n_endog(&self) -> usize {
+        1 + self.order.p + self.seasonal_order.p + self.order.q + self.seasonal_order.q
+    }
+
+    fn n_exog(&self, x: &Array2<f64>) -> usize {
+        x.shape()[1] - self.n_endog()
     }
 }
 
@@ -200,7 +205,7 @@ mod tests {
 
         // len_output should be len_input - order.d - s_order.d*s - max(order.p, s_order.p*s)
         // 29 - 1 - 7 * 0 - max(1, 7 * 2) = 13
-        // n_cols = intercept + order.q + s_order.q + order.d + s_order.d + n_x_cols
+        // n_cols = intercept + order.q + s_order.q + order.p + s_order.p + n_x_cols
         let x_result: Array2<f64> = arr2(&[
             // intercept
             [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],
