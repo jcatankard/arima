@@ -24,6 +24,8 @@ impl Model {
 
     pub(super) fn fit_error_model(&mut self, errors: &Array1<f64>, x: &Array2<f64>) {
         if self.order.q + self.seasonal_order.q > 0 {
+            let n_endog = 1 + self.order.p + self.order.q + self.seasonal_order.p + self.seasonal_order.q;
+            let x = x.slice(s![.., n_endog..]).to_owned();
             self.error_model
                 .as_mut()
                 .expect("Model should exist if there are error terms")
