@@ -8,7 +8,7 @@ pub(super) fn solve(x: ArrayView2<f64>, y: ArrayView1<f64>) -> Array1<f64> {
     let transpose = x.t();
     let square = transpose.dot(&x);
     
-    let mut penalty = Array::eye(square.shape()[0]) * 1.;
+    let mut penalty = Array::eye(square.shape()[0]) * 0.01;
     penalty[[0, 0]] = 0.;  // intercept
     let square_inverse = (square + penalty).inv().expect("Should invert.");
 
