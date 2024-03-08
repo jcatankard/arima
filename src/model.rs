@@ -18,7 +18,7 @@ pub struct Model {
     y_original: Option<Array1<f64>>,
     y_fit: Option<Array1<f64>>,
     x_fit: Option<Array2<f64>>,
-    coefs_fit: Option<Array1<f64>>,
+    pub coefs_fit: Option<Array1<f64>>,
     errors_fit: Option<Array1<f64>>,
     error_model: Option<Box<Model>>
 }
