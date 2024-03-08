@@ -1,17 +1,23 @@
 # arima
 Arima time-series forecasting for Python built in Rust
 
+## How run Rust unit testa
+`cargo test`
+
+## Build and install in Python virtual environment
+`maturin develop`
 
 ## How to use Python library
 
-## How run Rust unit test
-`cargo test`
+```Python
+from arima import Model
 
-## How to deploy to crates.io
 
-## How to create docs and preview for crates.io
-`cargo doc --open`
+X_train, X_test, y_train, y_test = ...
 
-## How to build Rust extension module for Python locally
+m = Model.sarima(order=ORDER, seasonal_order=SEASONAL_ORDER)
+m.fit(y=y_train.values, x=X_train.values)
 
-## How to deploy Rust extension module as PyPi package
+h = len(X_test)
+preds = m.predict(h=h, x=X_test.values)
+```
