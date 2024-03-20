@@ -10,10 +10,9 @@ use pyo3::pyclass;
 pub struct Model {
     // order: (AR(p), I(d), MA(q), 1)
     // seasonal_order: (AR(p), I(d), MA(q), s)
-    // x_fit: data used for fitting incl. exongenous variables, lags and error terms
+    // exog_fit: exongenous variables used for fitting
+    // endog_fit: time-series
     // coefs_fit: last coefficients from fitting
-    // errors_fit: y - ŷ
-    // error_model: forecasting future errors for MA models
     order: Order,
     seasonal_order: Order,
     endog_fit: Option<Array1<f64>>,
