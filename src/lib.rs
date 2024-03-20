@@ -34,7 +34,7 @@ impl Model {
         self.fit(&y.as_array().to_owned(), Some(&unwrap_x(x, y.len())))
     }
     #[pyo3(name = "predict")]
-    fn py_predict<'py>(&self, py: Python<'py>, h: usize, x: Option<PyArrayLike2<'py, f64>>
+    fn py_predict<'py>(&mut self, py: Python<'py>, h: usize, x: Option<PyArrayLike2<'py, f64>>
 ) -> &'py PyArray1<f64> {
         self.predict(h, Some(&unwrap_x(x, h))).into_pyarray(py)
     }
@@ -84,7 +84,7 @@ impl Model {
 
     #[getter]
     fn coefs<'py>(&self, py: Python<'py>) -> PyResult<&'py PyArray1<f64>> {
-        Ok(self.coefs_fit.to_owned().unwrap().into_pyarray(py))
+        Ok(self.coefs.to_owned().unwrap().into_pyarray(py))
     }
 }
 
