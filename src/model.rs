@@ -159,16 +159,17 @@ mod tests {
         }
 
         let y_train = y.slice(s![..180]).to_owned();
+        
         let mut y_test = y.slice(s![180..]).to_owned();
        
         let mut model = Model::autoregressive(2);
         model.fit(&y_train, None);
+        let mut y_preds = model.predict(20, None);
 
         let coefs = model.coefs.as_ref().unwrap().mapv(|x| (100. * x).round() / 100.);
-
         assert_eq!(arr1(&[cons, lag1, lag2]), coefs);
 
-        let y_preds = model.predict(20, None).mapv(|x| (100. * x).round() / 100.);
+        y_preds = y_preds.mapv(|x| (100. * x).round() / 100.);
         y_test = y_test.mapv(|x| (100. * x).round() / 100.);
         assert_eq!(y_test, y_preds);
     }
@@ -189,12 +190,13 @@ mod tests {
        
         let mut model = Model::sarima((2, 0, 0), (1, 0, 0, s));
         model.fit(&y_train, None);
+        let mut y_preds = model.predict(20, None);
 
         let coefs = model.coefs.as_ref().unwrap().mapv(|x| (100. * x).round() / 100.);
 
         assert_eq!(arr1(&[cons, lag1, lag2, lag_s]), coefs);
 
-        let y_preds = model.predict(20, None).mapv(|x| (100. * x).round() / 100.);
+        y_preds = y_preds.mapv(|x| (100. * x).round() / 100.);
         y_test = y_test.mapv(|x| (100. * x).round() / 100.);
         assert_eq!(y_test, y_preds);
     }
@@ -220,12 +222,13 @@ mod tests {
        
         let mut model = Model::moving_average(0);
         model.fit(&y_train, Some(&x_train));
+        let mut y_preds = model.predict(20, Some(&x_test));
 
         let coefs = model.coefs.as_ref().unwrap().mapv(|x| (100. * x).round() / 100.);
 
         assert_eq!(x_coefs, coefs.slice(s![1..]));
 
-        let y_preds = model.predict(20, Some(&x_test)).mapv(|x| (100. * x).round() / 100.);
+        y_preds = y_preds.mapv(|x| (100. * x).round() / 100.);
         y_test = y_test.mapv(|x| (100. * x).round() / 100.);
         assert_eq!(y_test, y_preds);
     }
