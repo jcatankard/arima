@@ -1,4 +1,3 @@
-// extern crate intel_mkl_src;
 use numpy::ndarray::{Array, Array1, ArrayView2, ArrayView1};
 use ndarray_linalg::solve::Inverse;
 
