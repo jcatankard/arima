@@ -29,23 +29,23 @@ fn unwrap_x(x: Option<PyArrayLike2<f64>>, default_length: usize) -> Array2<f64> 
 
 #[pymethods]
 impl Model {
-    #[pyo3(name = "fit")]
+    #[pyo3(name = "fit", signature = (y, x = None))]
     fn py_fit<'py>(&mut self, y: PyArrayLike1<'py, f64>, x: Option<PyArrayLike2<'py, f64>>) {
         self.fit(&y.as_array().to_owned(), Some(&unwrap_x(x, y.len())))
     }
-    #[pyo3(name = "predict")]
+    #[pyo3(name = "predict", signature = (h, x = None))]
     fn py_predict<'py>(&mut self, py: Python<'py>, h: usize, x: Option<PyArrayLike2<'py, f64>>
 ) -> &'py PyArray1<f64> {
         self.predict(h, Some(&unwrap_x(x, h))).into_pyarray(py)
     }
 
-    #[pyo3(name = "forecast")]
+    #[pyo3(name = "forecast", signature = (y, h, x = None, x_future = None))]
     fn py_forecast<'py>(&mut self, py: Python<'py>, y: PyArrayLike1<'py, f64>, h: usize, x: Option<PyArrayLike2<'py, f64>>, x_future: Option<PyArrayLike2<'py, f64>>
 ) -> &'py PyArray1<f64> {
         self.forecast(&y.as_array().to_owned(), h, Some(&unwrap_x(x, y.len())), Some(&unwrap_x(x_future, h))).into_pyarray(py)
     }
 
-    #[pyo3(name = "fit_predict")]
+    #[pyo3(name = "fit_predict", signature = (y, h, x = None, x_future = None))]
     fn py_fit_predict<'py>(&mut self, py: Python<'py>, y: PyArrayLike1<'py, f64>, h: usize, x: Option<PyArrayLike2<'py, f64>>, x_future: Option<PyArrayLike2<'py, f64>>
 ) -> &'py PyArray1<f64> {
         self.fit_predict(&y.as_array().to_owned(), h, Some(&unwrap_x(x, y.len())), Some(&unwrap_x(x_future, h))).into_pyarray(py)
