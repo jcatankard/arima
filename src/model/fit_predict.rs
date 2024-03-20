@@ -1,16 +1,31 @@
-mod normal_equation;
-use numpy::ndarray::{Array, Array1, Array2, s};
+pub(crate) mod normal_equation;
+use numpy::ndarray::{Array, Array1, Array2, Axis, concatenate, s};
 use super::Model;
 
-
 impl Model {
-    pub(super) fn fit_internal(&self, y: &Array1<f64>, mut x: &mut Array2<f64>) -> (Array1<f64>, Array1<f64>) {
+    pub(super) fn fit_predict_internal(
+        &self,
+        h: usize,
+        mut y: &mut Array1<f64>,
+        mut x: &mut Array2<f64>,
+        exog: &Array2<f64>
+    ) -> (Array1<f64>, Array1<f64>) {
+
+        let (coefs, errors) = self.fit_internal(h, &y, &mut x);
+
+        let new_errors = self.forecast_errors(h, &errors, &exog);
+        
+        let y_preds = self.predict_internal(h, &mut y, &mut x, &coefs, &new_errors);
+        (y_preds, coefs)
+    }
+
+    fn fit_internal(&self, h: usize, y: &Array1<f64>, mut x: &mut Array2<f64>) -> (Array1<f64>, Array1<f64>) {
         let (error_start_col, seasonal_error_start_col, seasonal_error_end_col) = self.error_cols();
         let mut coefs: Array1<f64> = Array::zeros(x.shape()[1]);
         let mut errors: Array1<f64> = Array::zeros(y.len());
-        // we need at least as many rows as columns for linear regression solver to work (assuming no regularization)
-        let start = x.shape()[1] + 1;
-        for i in start..y.len() {
+
+        let end = y.len() - h;
+        for i in 1..end {
 
             self.move_up(i, &mut x, &errors, error_start_col, seasonal_error_start_col, 1);
             self.move_up(i, &mut x, &errors, seasonal_error_start_col, seasonal_error_end_col, self.seasonal_order.s);
@@ -22,34 +37,45 @@ impl Model {
         (coefs, errors)
     }
 
-    pub(super) fn fit_error_model(&mut self, errors: &Array1<f64>, x: &Array2<f64>) {
-        if self.order.q + self.seasonal_order.q > 0 {
-            let x = x.slice(s![.., self.n_endog()..]).to_owned();
-            self.error_model
-                .as_mut()
-                .expect("Model should exist if there are error terms")
-                .fit(&errors, Some(&x));
-        }
-    }
-}
+    fn predict_internal(&self, h: usize, y: &mut Array1<f64>, mut x: &mut Array2<f64>, coefs: &Array1<f64>, errors: &Array1<f64>) -> Array1<f64> {
 
-impl Model {
-    pub(super) fn predict_internal(&self, h: usize, y_preds: &mut Array1<f64>, mut x: Array2<f64>, coefs: &Array1<f64>) {
         let (lag_start_col, seasonal_lag_start_col, seasonal_lag_end_col) = self.lag_cols();
+        let (error_start_col, seasonal_error_start_col, seasonal_error_end_col) = self.error_cols();
 
-        let start = y_preds.len() - h;
-        for i in start..y_preds.len() {
+        let start = y.len() - h;
+        for i in start..y.len() {
 
-            self.move_up(i, &mut x, &y_preds, lag_start_col, seasonal_lag_start_col, 1);
-            self.move_up(i, &mut x, &y_preds, seasonal_lag_start_col, seasonal_lag_end_col, self.seasonal_order.s);
+            self.move_up(i, &mut x, &y, lag_start_col, seasonal_lag_start_col, 1);
+            self.move_up(i, &mut x, &y, seasonal_lag_start_col, seasonal_lag_end_col, self.seasonal_order.s);
 
-            y_preds[i] = x.slice(s![i, ..]).dot(coefs);
+            self.move_up(i, &mut x, &errors, error_start_col, seasonal_error_start_col, 1);
+            self.move_up(i, &mut x, &errors, seasonal_error_start_col, seasonal_error_end_col, self.seasonal_order.s);
+
+            y[i] = x.slice(s![i, ..]).dot(coefs);
         }
-        y_preds.slice_collapse(s![-(h as isize)..]);
+        y.slice(s![-(h as isize)..]).to_owned()
     }
 
-    pub(super) fn predict_future_errors(&self, h: usize, x: Option<&Array2<f64>>) -> Array1<f64> {
-        if let Some(m) = self.error_model.as_ref() {m.predict(h, x)} else {Array::zeros(h)}
+    fn forecast_errors(&self, h: usize, errors: &Array1<f64>, exog: &Array2<f64>) -> Array1<f64> {
+
+        let errors_fit = errors.slice(s![..-(h as isize)]).to_owned();
+
+        let size = exog.shape()[0] - errors.len();  // exog may be longer than errors due to lags
+        let exog = exog.slice(s![size.., ..]).to_owned();
+
+        let errors_forecast: Array1<f64> = if self.order.q + self.seasonal_order.q > 0 {
+
+            let exog_future = exog.slice(s![-(h as isize).., ..]).to_owned();
+            let exog_fit = exog.slice(s![..-(h as isize), ..]).to_owned();
+        
+            let mut m = Model::sarima((self.order.p, 0, 0), (self.seasonal_order.p, 0, 0, self.seasonal_order.s));
+            m.forecast(&errors_fit, h, Some(&exog_fit), Some(&exog_future))
+
+        } else {
+            Array::zeros(h)
+        };
+
+        concatenate![Axis(0), errors_fit.view(), errors_forecast.view()]
     }
 }
 
