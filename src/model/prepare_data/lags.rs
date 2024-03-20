@@ -66,8 +66,6 @@ mod tests {
             [2., 3., 4., 5., 6., 7.],
             [0., 1., 2., 3., 4., 5.]
         ]);
-        println!("{:?}", result.t());
-        println!("{:?}", y_lags);
         assert_eq!(result.t(), y_lags);
     }
 
