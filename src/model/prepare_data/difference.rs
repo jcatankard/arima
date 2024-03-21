@@ -31,6 +31,9 @@ fn diff1d(y: &Array1<f64>, d: usize, s: usize) -> Array1<f64> {
     y
 }
 
+// let y = y.to_owned().insert_axis(Axis(1));
+// diff2d(&y, d, s).slice(s![.., 0]).to_owned()
+
 /// y: time series to difference
 /// d: degree of differences
 /// s_d: degree od seasonal differences
@@ -59,16 +62,15 @@ fn integrate(y: &Array1<f64>, y_last: &Array1<f64>, s: usize) -> Array1<f64> {
 pub(super) fn integrate_all(y_preds: &Array1<f64>, y_original: &Array1<f64>, d: usize, s_d: usize, s: usize) -> Array1<f64> {
 
     let mut y_integrated = y_preds.to_owned();
-    let mut y_last = y_original.to_owned();
 
-    for _ in (0..s_d).rev() {        
+    for i in (0..s_d).rev() {
+        let y_last = diff_all1d(&y_original, d, i, s);
         y_integrated = integrate(&y_integrated, &y_last, s);
-        y_last = diff1d(&y_last, 1, s);
     }
 
-    for _ in (0..d).rev() {
+    for i in (0..d).rev() {
+        let y_last = diff1d(&y_original, i, 1);
         y_integrated = integrate(&y_integrated, &y_last, 1);
-        y_last = diff1d(&y_last, 1, 1);
     }
     y_integrated
 }
@@ -151,7 +153,7 @@ mod tests {
         let y_train = y.slice(s![..cutoff]).to_owned();
         let y_future = y.slice(s![cutoff..]).to_owned();
 
-        let mut y_preds = diff_all1d(&y, d, s_d, s).slice(s![(- from_end)..]).to_owned();
+        let mut y_preds = diff_all1d(&y, d, s_d, s).slice(s![-from_end..]).to_owned();
         y_preds = integrate_all(&y_preds, &y_train, d, s_d, s);
         
         assert_eq!(y_future, y_preds);
@@ -165,11 +167,11 @@ mod tests {
 
         let cutoff = 14;
         let from_end = (y.len() - cutoff) as isize;
-        let y_train = y.slice(s![..cutoff]).to_owned();
 
+        let y_train = y.slice(s![..cutoff]).to_owned();
         let y_future = y.slice(s![cutoff..]).to_owned();
 
-        let mut y_preds = diff_all1d(&y, d, s_d, s).slice(s![(- from_end)..]).to_owned();
+        let mut y_preds = diff_all1d(&y, d, s_d, s).slice(s![-from_end..]).to_owned();
         y_preds = integrate_all(&y_preds, &y_train, d, s_d, s);
         
         assert_eq!(y_future, y_preds);
@@ -182,7 +184,7 @@ mod tests {
 
         let y1: Array1<f64> = arr1(&[1., 2., 4., 7., 11., 16., 22., 29., 37., 46., 56., 67., 79., 92., 106., 121., 137., 154., 172.]);
         let y2: Array1<f64> = arr1(&[1., 4., 1., 4., 1., 4., 1., 4., 1., 4., 1., 4., 1., 4., 1., 4., 1., 4., 1.]);
-        let y: numpy::ndarray::prelude::ArrayBase<numpy::ndarray::OwnedRepr<f64>, numpy::ndarray::prelude::Dim<[usize; 1]>> = y1 + y2;
+        let y = y1 + y2;
 
         let cutoff = 14;
         let from_end = (y.len() - cutoff) as isize;
@@ -190,7 +192,7 @@ mod tests {
 
         let y_future = y.slice(s![cutoff..]).to_owned();
 
-        let mut y_preds = diff_all1d(&y, d, s_d, s).slice(s![(- from_end)..]).to_owned();
+        let mut y_preds = diff_all1d(&y, d, s_d, s).slice(s![-from_end..]).to_owned();
         y_preds = integrate_all(&y_preds, &y_train, d, s_d, s);
         
         assert_eq!(y_future, y_preds);
@@ -209,7 +211,7 @@ mod tests {
 
         let y_future = y.slice(s![cutoff..]).to_owned();
 
-        let mut y_preds = diff_all1d(&y, d, s_d, s).slice(s![(- from_end)..]).to_owned();
+        let mut y_preds = diff_all1d(&y, d, s_d, s).slice(s![-from_end..]).to_owned();
         y_preds = integrate_all(&y_preds, &y_train, d, s_d, s);
         
         assert_eq!(y_future, y_preds);
