@@ -4,8 +4,15 @@ Arima time-series forecasting for Python built in Rust
 ## Run Rust unit tests
 `cargo test`
 
+## Create Python virtual environment
+`python -m venv <virtual-environment-name>`
+
+To activate:
+
+`<virtual-environment-name>/Scripts/activate`
+
 ## Build and install in Python virtual environment
-`maturin develop`
+`maturin develop` to build the wheels and install in Python virtual environment. [Docs](https://www.maturin.rs/local_development) for more info.
 
 ## How to use Python library
 
