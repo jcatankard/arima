@@ -7,119 +7,69 @@ use numpy::ndarray::{Array, Array1, Array2, Axis, concatenate, s};
 
 
 impl Model {
-    pub(super) fn prepare_for_fit(&self, y: &Array1<f64>, x: Option<&Array2<f64>>) -> (Array1<f64>, Array2<f64>) {
-        let mut x = self.unwrap_x(x, y.len());
-        let nobs = self.find_nobs(&y, &x);
-        
-        let mut y = difference::difference_all(&y, self.order.d, self.seasonal_order.d, self.seasonal_order.s);
-
-        let errors: Array2<f64> = Array::zeros((nobs as usize, self.order.q));
-        let errors_seasonal: Array2<f64> = Array::zeros((nobs as usize, self.seasonal_order.q));
-        
-        let y_lags = lags::create_lags(&y, self.order.p, self.order.s);
-        let y_lags_seasonal = lags::create_lags(&y, self.seasonal_order.p, self.seasonal_order.s);
-        
-        x = self.prepare_x(x, errors, errors_seasonal, y_lags, y_lags_seasonal, nobs);
-        y.slice_collapse(s![-nobs..]);
-        (y, x)
-    }
-    
-    fn find_nobs(&self, y: &Array1<f64>, x: &Array2<f64>) -> isize {
-        let n_lost = self.nobs_lost_from_diffs_and_lags();
-        let min_rows = n_lost + self.n_model_features(&x);
-        if y.len() < min_rows {
-            panic!("y is of length {}. It must be at least {} based on provided model parameters.", y.len(), min_rows);
-        }
-        (y.len() - n_lost) as isize
-    }
-
-    fn nobs_lost_from_diffs_and_lags(&self) -> usize {
-        let from_lags = max(self.order.p, self.seasonal_order.p * self.seasonal_order.s);
-        let from_diffs = self.order.d + self.seasonal_order.d * self.seasonal_order.s;
-        from_lags + from_diffs
-    }
-
-    fn n_model_features(&self, x: &Array2<f64>) -> usize {
-        // need at least as many rows as columns for linear regression solver to work (assuming no regularization) incl intercept
-        x.shape()[1]
-        + self.order.q
-        + self.seasonal_order.q
-        + self.order.p
-        + self.seasonal_order.p
-        + 1  // intercept
+    pub(super) fn integrate_predictions(&self, y_preds: &Array1<f64>, endog_fit: &Array1<f64>) -> Array1<f64> {
+        let intercept = self.coefs.as_ref().unwrap()[0];
+        let mut y_preds = y_preds - intercept;
+        y_preds = difference::integrate_all(&y_preds, endog_fit, self.order.d, self.seasonal_order.d, self.seasonal_order.s);
+        y_preds + intercept
     }
 }
 
 impl Model {
-    pub(super) fn prepare_for_predict(&self, h: usize, x: Option<&Array2<f64>>, future_errors: Array1<f64>) -> (Array1<f64>, Array2<f64>, &Array1<f64>) {
-        let (x_fit, errors_fit, coefs_fit, y_fit) = self.get_fit_refs();
-
-        let errors = concatenate![Axis(0), errors_fit.view(), future_errors.view()];
-
-        let x_future = self.prepare_x_future(h, x, errors, &coefs_fit);
-        let x = concatenate![Axis(0), x_fit.view(), x_future.view()];
-
-        let y_preds = concatenate![Axis(0), y_fit.view(), Array::zeros(h).view()];
-
-        (y_preds, x, coefs_fit)
-    }
-
-    fn get_fit_refs(&self) -> (&Array2<f64>, &Array1<f64>, &Array1<f64>, &Array1<f64>) {
-        let message: &str = "Model must be fit before predict";
-        let x_fit = self.x_fit.as_ref().expect(message);
-        let errors_fit = self.errors_fit.as_ref().expect(message);
-        let coefs_fit = self.coefs_fit.as_ref().expect(message);
-        let y_fit = self.y_fit.as_ref().expect(message);
-        (x_fit, errors_fit, coefs_fit, y_fit)
-    }
-
-    fn prepare_x_future(&self, h: usize, x: Option<&Array2<f64>>, all_errors: Array1<f64>, coefs: &Array1<f64>) -> Array2<f64> {
-        let mut x_future = self.unwrap_x(x, h);
-
-        let errors = lags::create_lags(&all_errors, self.order.q, self.order.s);
-        let errors_seasonal = lags::create_lags(&all_errors, self.seasonal_order.q, self.seasonal_order.s);
-
-        let y_lags = Array::zeros((h, self.order.p));
-        let y_lags_seasonal = Array::zeros((h, self.seasonal_order.p));
-
-        x_future = self.prepare_x(x_future, errors, errors_seasonal, y_lags, y_lags_seasonal, h as isize);
-        if x_future.shape()[1] != coefs.len() {
-            panic!("X future must have same number of exogenous variables as used for fit");
-        }
-        x_future
-    }
-
-    pub(super) fn un_difference(&self, y_preds: &mut Array1<f64>) {
-        let y_original = self.y_original.as_ref().unwrap();
-        *y_preds = difference::un_difference_all(&y_preds, y_original, self.order.d, self.seasonal_order.d, self.seasonal_order.s);
-    }
-}
-
-impl Model {
-    fn unwrap_x(&self, x: Option<&Array2<f64>>, default_length: usize) -> Array2<f64> {
+    pub(super) fn unwrap_x(&self, x: Option<&Array2<f64>>, default_length: usize) -> Array2<f64> {
         let x = x.unwrap_or(&Array::zeros((default_length, 0))).to_owned();
         self.check_x_size(default_length, &x);
         x
     }
 
-    fn prepare_x(
+    pub(super) fn difference_xy(
         &self,
-        x: Array2<f64>,
-        errors: Array2<f64>,
-        errors_seasonal: Array2<f64>,
-        y_lags: Array2<f64>,
-        y_lags_seasonal: Array2<f64>,
-        size: isize
-    ) -> Array2<f64> {
-        let intercept: Array2<f64> = Array::ones(size as usize).insert_axis(Axis(1));
+        exog_fit: &Array2<f64>,
+        exog_future: &Array2<f64>,
+        endog_fit: &Array1<f64>,
+        h: usize
+    ) -> (Array2<f64>, Array1<f64>) {
+
+        let exog = concatenate![Axis(0), exog_fit.view(), exog_future.view()];
+        let exog_diff = difference::diff_all2d(&exog, self.order.d, self.seasonal_order.d, self.seasonal_order.s);
+
+        let mut endog_diff = difference::diff_all1d(&endog_fit, self.order.d, self.seasonal_order.d, self.seasonal_order.s);
+        endog_diff = concatenate![Axis(0), endog_diff.view(), Array::zeros(h).view()];
+
+        (exog_diff, endog_diff)
+    }
+
+    pub(super) fn prepare_xy(&self, exog: &Array2<f64>, endog: &Array1<f64>) -> (Array2<f64>, Array1<f64>) {
+
+        let nobs_lost = max(self.order.p, self.seasonal_order.p * self.seasonal_order.s);
+        if nobs_lost >= endog.len() {
+            panic!("y used for fitting is not long enough based on model specification.")
+        }
+        let nobs = endog.len() - nobs_lost;
+
+        let x = self.prepare_x(&exog, &endog, nobs);
+        let y = endog.slice(s![-(nobs as isize)..]).to_owned();
+        (x, y)
+    }
+
+    fn prepare_x(&self, exog: &Array2<f64>, endog: &Array1<f64>, nobs: usize) -> Array2<f64> {
+
+        let y_lags = lags::create_lags(&endog, self.order.p, self.order.s);
+        let y_lags_seasonal = lags::create_lags(&endog, self.seasonal_order.p, self.seasonal_order.s);
+
+        let errors: Array2<f64> = Array::zeros((nobs, self.order.q));
+        let errors_seasonal: Array2<f64> = Array::zeros((nobs, self.seasonal_order.q));
+        let intercept: Array2<f64> = Array::ones((nobs, 1));
+
+        let nobs = nobs as isize;
         concatenate![
             Axis(1),
             intercept.view(),
-            errors.slice(s![-size.., ..]),
-            errors_seasonal.slice(s![-size.., ..]),
-            y_lags.slice(s![-size.., ..]),
-            y_lags_seasonal.slice(s![-size.., ..]),
-            x.slice(s![-size.., ..])
+            errors.view(),
+            errors_seasonal.view(),
+            y_lags.slice(s![-nobs.., ..]),
+            y_lags_seasonal.slice(s![-nobs.., ..]),
+            exog.slice(s![-nobs.., ..])
         ]
     }
 
@@ -128,20 +78,11 @@ impl Model {
             panic!("x is length: {}. It should be length: {}.", x.shape()[0], size);
         }
 
-        if let Some(x_fit) = &self.x_fit {
-            if x.shape()[1] != self.n_exog(&x_fit) {
-                panic!("x has {} columns. It should have {}.", x.shape()[1], self.n_exog(&x_fit));
+        if let Some(x_fit) = &self.exog_fit {
+            if x.shape()[1] != x_fit.shape()[1] {
+                panic!("x has {} columns. It should have {}.", x.shape()[1], x_fit.shape()[1]);
             }
         }
-
-    }
-
-    pub(crate) fn n_endog(&self) -> usize {
-        1 + self.order.p + self.seasonal_order.p + self.order.q + self.seasonal_order.q
-    }
-
-    fn n_exog(&self, x: &Array2<f64>) -> usize {
-        x.shape()[1] - self.n_endog()
     }
 }
 
@@ -154,78 +95,33 @@ mod tests {
     // run with "cargo test -- --show-output" to see output
 
     #[test]
-    #[should_panic(expected = "It must be at least")]
+    #[should_panic(expected = "y used for fitting is not long enough based on model specification")]
     fn prepare_data_y_too_small() {
         let model = Model::sarima((2, 1, 3), (1, 1, 1, 7));
         let y = arr1(&[0., 1., 2., 3.]);
-        model.prepare_for_fit(&y, None);
+        let x: Array2<f64> = Array::zeros((y.len(), 0));
+        model.prepare_xy(&x, &y);
     }
 
     #[test]
-    #[should_panic(expected = "It must be at least")]
-    fn prepare_data_y_too_small_for_x_cols() {
-        let model = Model::moving_average(0);
-        let y: Array1<f64> = Array::ones(20);
-        let x: Array2<f64> = Array::ones((20, 30));
-        model.prepare_for_fit(&y, Some(&x));
-    }
-
-    #[test]
-    #[should_panic(expected = "X future must have same number of exogenous variables as used for fit")]
+    #[should_panic(expected = "columns. It should have")]
     fn prepare_data_x_future_wrong_cols() {
         
         let h = 10;
+        let y: Array1<f64> = Array::ones(200);
+        let x: Array2<f64> = Array::ones((200, 10));
         let x_future: Array2<f64> = Array::ones((h, 8));
 
-        let model = Model::moving_average(0);
-        let errors: Array1<f64> = Array::zeros(h);
-        let n_features = 5;
-        let coefs: Array1<f64> = Array::ones(n_features);
-        model.prepare_x_future(h, Some(&x_future), errors, &coefs);
+        let mut model = Model::moving_average(0);
+        model.forecast(&y, h, Some(&x), Some(&x_future));
     }
 
     #[test]
-    #[should_panic(expected = "must be length")]
+    #[should_panic(expected = "It should be length")]
     fn prepare_data_y_len_not_equal_x_len() {
         let model = Model::sarima((1, 1, 0), (2, 2, 0, 2));
         let y = arr1(&[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]);
         let x: Array2<f64> = arr2(&[[0., 1., 2., 3., 4.], [0., 1., 2., 3., 4.]]).t().to_owned();
-        model.prepare_for_fit(&y, Some(&x));
-    }
-    
-    #[test]
-    fn prepare_data_prepare_for_fit() {
-        let model = Model::sarima((1, 1, 3), (2, 0, 2, 7));
-
-        let len = 28;
-        let y: Array1<f64> = Array::range(0., len as f64, 1.);
-        let x: Array2<f64> = Array::zeros((len, 4));
-
-        let (_, x) = model.prepare_for_fit(&y, Some(&x));
-
-        // len_output should be len_input - order.d - s_order.d*s - max(order.p, s_order.p*s)
-        // 29 - 1 - 7 * 0 - max(1, 7 * 2) = 13
-        // n_cols = intercept + order.q + s_order.q + order.p + s_order.p + n_x_cols
-        let x_result: Array2<f64> = arr2(&[
-            // intercept
-            [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],
-            // errors
-            [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-            // lags (have been differences so shows ones)
-            [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],
-            [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],
-            [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.],
-            // exongenous
-            [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-        ]).t().to_owned();
-
-        assert_eq!(x, x_result);
+        model.unwrap_x(Some(&x), y.len());
     }
 }
