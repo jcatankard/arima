@@ -1,5 +1,7 @@
 # ARIMA
-Arima time-series forecasting for Python built in Rust
+Arima time-series forecasting for Python built in Rust.
+
+[Medium blog post](https://medium.com/@jcatankard_76170/sarimax-in-rust-d71488afd10b).
 
 ## Run Rust unit tests
 `cargo test`
